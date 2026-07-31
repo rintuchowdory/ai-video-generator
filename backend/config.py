@@ -13,13 +13,12 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 GROQ_API_URL = os.getenv("GROQ_API_URL", "https://api.groq.com/openai/v1/chat/completions")
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 
-# --- Video generation (Kling-compatible async gateway) ---
-# Works with any provider that exposes an OpenAI-style async submit/poll pattern
-# (official Kling API, or a gateway like fal.ai / Renderful / Evolink / Atlas Cloud).
-# Swap KLING_API_BASE_URL + KLING_API_KEY to change provider without touching code.
-KLING_API_BASE_URL = os.getenv("KLING_API_BASE_URL", "https://api.evolink.ai/v1")
+# --- Video generation (Magic Hour API — supports Kling 3.0 and other models) ---
+# Free tier: sign up at https://magichour.ai/developer, no credit card required.
+KLING_API_BASE_URL = os.getenv("KLING_API_BASE_URL", "https://api.magichour.ai/v1")
 KLING_API_KEY = os.getenv("KLING_API_KEY", "")
-KLING_MODEL = os.getenv("KLING_MODEL", "kling-v3-text-to-video")
+KLING_MODEL = os.getenv("KLING_MODEL", "kling-3.0")
+KLING_RESOLUTION = os.getenv("KLING_RESOLUTION", "480p")  # 480p is the free-tier default
 
 # --- App ---
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")

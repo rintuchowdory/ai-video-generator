@@ -5,17 +5,21 @@ import config
 
 
 async def submit_video_job(prompt: str, duration_seconds: int, aspect_ratio: str) -> str:
-    """Submit a text-to-video generation job. Returns the provider's job/request id."""
-    url = f"{config.KLING_API_BASE_URL}/videos/generations"
+    """Submit a text-to-video generation job to Magic Hour. Returns the project id."""
+    url = f"{config.KLING_API_BASE_URL}/text-to-video"
     headers = {
         "Authorization": f"Bearer {config.KLING_API_KEY}",
         "Content-Type": "application/json",
+        "Accept": "application/json",
     }
     payload = {
-        "model": config.KLING_MODEL,
-        "prompt": prompt,
-        "duration": duration_seconds,
+        "name": f"Werkbank scene ({prompt[:40]})",
+        "end_seconds": duration_seconds,
         "aspect_ratio": aspect_ratio,
+        "resolution": config.KLING_RESOLUTION,
+        "model": config.KLING_MODEL,
+        "audio": False,
+        "style": {"prompt": prompt},
     }
 
     async with httpx.AsyncClient(timeout=30) as client:
@@ -23,18 +27,20 @@ async def submit_video_job(prompt: str, duration_seconds: int, aspect_ratio: str
             resp = await client.post(url, headers=headers, json=payload)
             resp.raise_for_status()
         except httpx.HTTPError as e:
-            raise HTTPException(status_code=502, detail=f"Video job submission failed: {e}")
+            detail = getattr(e, "response", None)
+            body = detail.text if detail is not None else ""
+            raise HTTPException(status_code=502, detail=f"Video job submission failed: {e} {body}")
 
     data = resp.json()
-    job_id = data.get("id") or data.get("request_id") or data.get("task_id")
+    job_id = data.get("id")
     if not job_id:
-        raise HTTPException(status_code=502, detail=f"No job id in provider response: {data}")
+        raise HTTPException(status_code=502, detail=f"No project id in provider response: {data}")
     return job_id
 
 
 async def poll_video_job(job_id: str) -> dict:
     """Check job status. Returns {"status": ..., "video_url": ..., "error": ...}."""
-    url = f"{config.KLING_API_BASE_URL}/videos/generations/{job_id}"
+    url = f"{config.KLING_API_BASE_URL}/video-projects/{job_id}"
     headers = {"Authorization": f"Bearer {config.KLING_API_KEY}"}
 
     async with httpx.AsyncClient(timeout=30) as client:
@@ -48,26 +54,22 @@ async def poll_video_job(job_id: str) -> dict:
     raw_status = str(data.get("status", "")).lower()
 
     status_map = {
+        "draft": "queued",
         "queued": "queued",
         "pending": "queued",
         "processing": "processing",
-        "running": "processing",
+        "rendering": "processing",
+        "complete": "completed",
         "completed": "completed",
-        "succeeded": "completed",
-        "failed": "failed",
         "error": "failed",
+        "failed": "failed",
     }
     status = status_map.get(raw_status, "processing")
 
     video_url = None
-    output = data.get("output") or {}
-    media = output.get("media_url") if isinstance(output, dict) else None
-    if isinstance(media, list) and media:
-        video_url = media[0]
-    elif isinstance(media, str):
-        video_url = media
-    elif data.get("video_url"):
-        video_url = data["video_url"]
+    downloads = data.get("downloads") or []
+    if downloads and isinstance(downloads, list):
+        video_url = downloads[0].get("url")
 
     return {
         "status": status,
