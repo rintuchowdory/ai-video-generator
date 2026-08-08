@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from secrets import token_urlsafe
 
-import config
+from . import config
 
 
 @dataclass(frozen=True)
@@ -16,11 +16,7 @@ class UploadedAsset:
 
 
 class AssetStore:
-    """Minimal in-memory lookup for short-lived Magic Hour input assets.
-
-    The provider retains uploads according to its own policy. This store only
-    keeps the mapping needed by the browser while a user is editing a project.
-    """
+    """Minimal in-memory lookup for short-lived Magic Hour input assets."""
 
     def __init__(self) -> None:
         self._assets: dict[str, UploadedAsset] = {}
