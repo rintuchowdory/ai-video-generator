@@ -1,4 +1,5 @@
 import json
+
 import httpx
 from fastapi import HTTPException
 
@@ -24,12 +25,17 @@ SYSTEM_PROMPT = {
 
 
 async def generate_storyboard(topic: str, language: str, scene_count: int, tone: str) -> list[dict]:
+    if not config.GROQ_PROXY_URL and not config.GROQ_API_KEY:
+        raise HTTPException(
+            status_code=503,
+            detail="Storyboard generation is not configured. Set GROQ_PROXY_URL or GROQ_API_KEY in backend/.env.",
+        )
+
     user_prompt = (
         f"Thema/Topic: {topic}\n"
         f"Anzahl Szenen/Scene count: {scene_count}\n"
         f"Ton/Tone: {tone}\n"
     )
-
     payload = {
         "model": config.GROQ_MODEL,
         "messages": [
@@ -41,25 +47,27 @@ async def generate_storyboard(topic: str, language: str, scene_count: int, tone:
     }
 
     url = config.GROQ_PROXY_URL or config.GROQ_API_URL
-    headers = {"Content-Type": "application/json"}
+    headers = {"Content-Type": "application/json", "Accept": "application/json"}
     if not config.GROQ_PROXY_URL:
-        # Talking to Groq directly requires the key here; a proxy (recommended)
-        # holds the key server-side instead.
         headers["Authorization"] = f"Bearer {config.GROQ_API_KEY}"
 
-    async with httpx.AsyncClient(timeout=60) as client:
+    async with httpx.AsyncClient(timeout=httpx.Timeout(60.0, connect=15.0)) as client:
         try:
-            resp = await client.post(url, headers=headers, json=payload)
-            resp.raise_for_status()
-        except httpx.HTTPError as e:
-            raise HTTPException(status_code=502, detail=f"Groq request failed: {e}")
+            response = await client.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+        except httpx.HTTPError as error:
+            provider_response = getattr(error, "response", None)
+            detail = provider_response.text[:800] if provider_response is not None else str(error)
+            raise HTTPException(status_code=502, detail=f"Groq storyboard request failed: {detail}") from error
 
-    data = resp.json()
     try:
+        data = response.json()
         content = data["choices"][0]["message"]["content"]
         parsed = json.loads(content)
-        scenes = parsed["scenes"][:scene_count]
-    except (KeyError, IndexError, json.JSONDecodeError) as e:
-        raise HTTPException(status_code=502, detail=f"Could not parse Groq response: {e}")
+        scenes = parsed["scenes"]
+    except (KeyError, IndexError, TypeError, ValueError, json.JSONDecodeError) as error:
+        raise HTTPException(status_code=502, detail=f"Could not parse the storyboard provider response: {error}") from error
 
-    return scenes
+    if not isinstance(scenes, list):
+        raise HTTPException(status_code=502, detail="Storyboard provider did not return a scenes array.")
+    return [scene for scene in scenes if isinstance(scene, dict)][:scene_count]

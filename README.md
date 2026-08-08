@@ -1,90 +1,145 @@
 # Werkbank — AI Video Generator
 
-Turn one topic into a scene-by-scene storyboard (via Groq) and generate each
-scene as a short video (via Magic Hour / Kling 3.0).
-Built for German SMBs and marketers who need short ad/social clips fast, in
-their own language.
+Werkbank turns one marketing topic into an editable scene-by-scene storyboard, then helps a team create short video assets from either text prompts or image references. It is designed for German and English social-media and advertising workflows, with a FastAPI backend that keeps provider credentials server-side and a Next.js editor for reviewing every scene before generation.
 
-## How it works
+> **Important:** This repository does not contain an API key. Generate your own Magic Hour key in the [Developer Hub][1], place it in `backend/.env`, and never add it to a `NEXT_PUBLIC_*` variable or commit it to Git.
 
-1. You give it a topic ("Eroeffnung unseres neuen Cafes in Aachen").
-2. Groq (free, open-source Llama 3.3 70B) writes a scene-by-scene storyboard:
-   narration + a detailed visual prompt per scene.
-3. You review/edit the storyboard.
-4. Each scene is submitted to Magic Hour's video generation API (Kling 3.0)
-   and polled until the clip is ready.
+## What Changed
 
-## Quick Start
+| Area | Previous behavior | Updated behavior |
+| --- | --- | --- |
+| Video defaults | Requested `kling-3.0` at `480p`, a combination Magic Hour does not document as compatible. | Defaults to **LTX 2.3 at 480p**, then exposes validated model, resolution, duration, aspect-ratio, and audio controls. |
+| Video tools | Text-to-video only, with a hard-coded 16:9 output. | Text-to-video, text-to-image reference generation, image upload, and image-to-video workflows. |
+| Job handling | The browser chose a generic status call and polling intervals were never cleaned up. | The backend records each project type; the browser uses cleanup-aware retry polling and displays provider errors. |
+| Error handling | Missing provider configuration failed ambiguously. | The API returns explicit setup guidance for missing Groq or Magic Hour credentials. |
+| Upload safety | No image input path. | Uploads are size-limited, pass through the backend, and receive short-lived opaque asset references. |
+| Configuration | Legacy `KLING_*` naming implied a generic provider despite using Magic Hour-specific endpoints. | Uses `MAGIC_HOUR_*` settings, with read-only fallbacks for existing legacy environment variables. |
 
-### 1. Get free API keys
+Magic Hour documents bearer-token authentication, asynchronous project IDs, text-to-video, image-to-video, image generation, and file uploads. Its documented models, allowed durations, audio support, and resolutions vary by model and account tier; Werkbank rejects incompatible pairs before submitting a billable request. [2] [3] [4]
 
-Both services offer free tiers — no credit card required:
+## Features
 
-| Service | Purpose | Sign up |
-|---------|---------|---------|
-| Groq | Storyboard generation (Llama 3.3 70B) | https://console.groq.com/keys |
-| Magic Hour | Video generation (Kling 3.0) | https://magichour.ai/developer |
+| Workflow | What it does |
+| --- | --- |
+| **Storyboard** | Uses Groq to turn one topic into editable narration, visual prompts, and scene durations. |
+| **Text-to-video** | Submits one reviewed scene at a time with a validated video model, resolution, ratio, duration, and optional audio. |
+| **Text-to-image** | Generates a visual reference from a scene prompt, with an allow-listed image model and style choice. |
+| **Image-to-video** | Animates an uploaded image or a completed in-app reference image with a motion prompt. |
+| **Job status** | Polls the correct provider project type and renders finished video or image output in the browser. |
+| **Safe uploads** | Sends images through the backend to Magic Hour storage; the browser never receives the provider API key. |
 
-### 2. Backend
+## Prerequisites
+
+| Requirement | Purpose |
+| --- | --- |
+| Python 3.11+ | FastAPI backend |
+| Node.js 20+ | Next.js frontend |
+| Groq API key or Groq proxy URL | Storyboard generation |
+| Magic Hour API key | Image and video generation |
+
+Magic Hour’s quick-start material describes introductory and claimable credits for new accounts, but those are limited promotional credits rather than unlimited free API access. Check the provider dashboard for the current balance and model availability before generating media. [5]
+
+## Setup
+
+### 1. Configure the backend
 
 ```bash
 cd backend
-python3 -m venv .venv && source .venv/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env   # fill in GROQ_API_KEY and KLING_API_KEY
+cp .env.example .env
+```
+
+Edit `backend/.env` and set the required secrets locally:
+
+```dotenv
+# Either use a server-side proxy …
+GROQ_PROXY_URL=https://your-groq-proxy.example
+
+# … or call Groq from the backend directly.
+# GROQ_API_KEY=your_groq_key
+
+MAGIC_HOUR_API_KEY=your_magic_hour_key
+ALLOWED_ORIGINS=http://localhost:3000
+```
+
+Start the API:
+
+```bash
 uvicorn main:app --reload
 ```
 
-Check your setup at http://localhost:8000/api/health — it shows which keys
-are configured and in what mode (direct vs proxy).
-
-### 3. Frontend
+### 2. Configure the frontend
 
 ```bash
-cd frontend
-npm install
-cp .env.local.example .env.local   # point NEXT_PUBLIC_API_BASE at your backend
+cd ../frontend
+npm ci
+cp .env.local.example .env.local
 npm run dev
 ```
 
-Open http://localhost:3000.
+The default local frontend URL is `http://localhost:3000`, while the default backend URL is `http://localhost:8000`. For a deployed frontend, set `NEXT_PUBLIC_API_BASE` to the public backend URL and update `ALLOWED_ORIGINS` on the backend to include the deployed frontend origin.
 
-## Configuration
+## Media Settings and Free-Tier-Safe Start
 
-**Groq** (storyboard generation): set `GROQ_API_KEY` to call Groq directly
-(recommended for getting started — free key from console.groq.com). For
-production, set `GROQ_PROXY_URL` to your own Cloudflare Worker proxy instead,
-so the raw key never lives in the backend.
+The interface starts with **LTX 2.3 at 480p**, which Magic Hour documents as supported on its free tier. **Kling 3.0 is selectable**, but it requires at least 720p according to the current API reference; the backend validates this before a request is submitted. [2]
 
-**Video generation**: `KLING_API_BASE_URL` + `KLING_API_KEY` point at Magic
-Hour's API. Free tier limits resolution to 576px; set `KLING_RESOLUTION=480p`
-to stay within the free tier.
+| Use case | Recommended initial setting | Notes |
+| --- | --- | --- |
+| Fast low-cost tests | LTX 2.3, 480p, 3–5 seconds | Good for testing the full pipeline before spending more credits. |
+| Cinematic scene draft | Kling 3.0, 720p, 5 seconds | Requires a compatible plan and sufficient credits. |
+| Scene reference | Default image model, 640px | Creates an image that can be reviewed before animation. |
+| Social vertical video | 9:16 | Use text-to-video for direct ratio control; image-to-video follows the input image geometry. |
 
-## API Endpoints
+## API Surface
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/` | GET | API status |
-| `/api/health` | GET | Shows which API keys are configured |
-| `/api/script` | POST | Generate a storyboard from a topic |
-| `/api/generate` | POST | Submit video generation jobs for each scene |
-| `/api/status/{job_id}` | GET | Poll a single video job's status |
+| Route | Method | Purpose |
+| --- | --- | --- |
+| `/api/capabilities` | `GET` | Returns the server allow-list of supported models, resolutions, durations, styles, and ratios. |
+| `/api/script` | `POST` | Creates an editable Groq storyboard. |
+| `/api/generate` | `POST` | Starts text-to-video jobs for reviewed scenes. |
+| `/api/images/generate` | `POST` | Starts a text-to-image reference job. |
+| `/api/assets/images` | `POST` | Uploads an image for image-to-video; accepts multipart form data. |
+| `/api/videos/from-image` | `POST` | Starts an image-to-video job from an uploaded asset or generated image. |
+| `/api/status/{job_id}` | `GET` | Polls a project that was created in the current backend process. |
 
-## Architecture
+## Validation
 
+The current revision has been verified with the following commands:
+
+```bash
+# Backend API contracts
+cd backend
+source .venv/bin/activate
+python -m unittest discover -s tests -v
+
+# Frontend type-check and production build
+cd ../frontend
+npm run build
 ```
-frontend/         Next.js 15 app (storyboard editor + generation UI)
-backend/
-  main.py         FastAPI routes: /api/health, /api/script, /api/generate, /api/status/{id}
-  groq_client.py  Storyboard generation via Groq (free, open-source Llama models)
-  kling_client.py Video job submit/poll against Magic Hour API
-  schemas.py      Request/response models
-  config.py       Env var configuration + helper checks
-```
 
-## Roadmap
+The backend tests cover the free-tier-safe capabilities response, rejection of the invalid Kling 3.0 + 480p combination, explicit missing-key errors, and protection against polling unknown jobs. The frontend production build completed successfully.
 
-- [ ] Stitch generated scene clips into one final video (ffmpeg)
-- [ ] Persist storyboards/jobs (SQLite/Postgres) instead of in-memory state
-- [ ] User accounts + saved projects
-- [ ] DSGVO-compliant storage for generated media (EU region)
+## Current Limitations
+
+Werkbank deliberately keeps job metadata and temporary image references in memory. A backend restart prevents status lookup for prior jobs, and it expires temporary image references after one hour by default. Magic Hour handles its own provider-side retention; production deployments should add persistent project storage and object storage before supporting long-lived customer projects. Magic Hour also offers webhooks for video and image completion, which are preferable to client polling in a publicly deployed production service. [6]
+
+## Suggested Next Milestones
+
+| Priority | Improvement |
+| --- | --- |
+| High | Persist users, projects, jobs, and provider metadata in a database. |
+| High | Store completed media in an application-controlled object store and refresh expiring provider URLs. |
+| Medium | Add webhook verification and event-driven project updates for a public deployment. |
+| Medium | Add clip stitching, captions, branding, and final export. |
+| Medium | Add authentication, usage limits, and an audit trail before sharing the application with customers. |
+
+## References
+
+[1]: https://magichour.ai/developer "Magic Hour Developer Hub"
+[2]: https://docs.magichour.ai/api-reference/video-projects/text-to-video "Magic Hour Text-to-Video API Reference"
+[3]: https://docs.magichour.ai/api-reference/video-projects/image-to-video "Magic Hour Image-to-Video API Reference"
+[4]: https://docs.magichour.ai/api-reference/image-projects/ai-image-generator "Magic Hour AI Image Generator API Reference"
+[5]: https://docs.magichour.ai/get-started/quick-start "Magic Hour Quick Start"
+[6]: https://docs.magichour.ai/integration/webhook/overview "Magic Hour Webhook Overview"
