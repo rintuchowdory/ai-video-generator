@@ -1,11 +1,17 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import sys
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
 from . import config
+
+# Compatibility alias: several backend modules historically import `config`
+# as a top-level module. Render loads this app as the `backend` package.
+sys.modules.setdefault("config", config)
+
 from .asset_store import asset_store
 from . import groq_client
 from .magic_hour_client import magic_hour
@@ -50,36 +56,17 @@ job_registry: dict[str, JobMetadata] = {}
 
 def remember_job(job_id: str, *, kind: ProjectKind, workflow: str, scene_index: int | None = None) -> SceneJob:
     job_registry[job_id] = JobMetadata(kind=kind, workflow=workflow, scene_index=scene_index)
-    return SceneJob(
-        scene_index=scene_index,
-        job_id=job_id,
-        kind=kind,
-        workflow=workflow,
-        status="queued",
-    )
+    return SceneJob(scene_index=scene_index, job_id=job_id, kind=kind, workflow=workflow, status="queued")
 
 
 @app.get("/")
 def root():
-    return {
-        "message": "Werkbank AI Video Generator API",
-        "status": "ok",
-        "magic_hour_configured": config.magic_hour_is_configured(),
-    }
+    return {"message": "Werkbank AI Video Generator API", "status": "ok", "magic_hour_configured": config.magic_hour_is_configured()}
 
 
 @app.get("/api/capabilities", response_model=ProviderCapabilitiesResponse)
 def get_capabilities():
-    video_models = [
-        ProviderModelOption(
-            id=model_id,
-            label=str(details["label"]),
-            resolutions=list(details["resolutions"]),
-            durations=list(details["durations"]),
-            supports_audio=bool(details["audio"]),
-        )
-        for model_id, details in VIDEO_MODEL_OPTIONS.items()
-    ]
+    video_models = [ProviderModelOption(id=model_id, label=str(details["label"]), resolutions=list(details["resolutions"]), durations=list(details["durations"]), supports_audio=bool(details["audio"])) for model_id, details in VIDEO_MODEL_OPTIONS.items()]
     return ProviderCapabilitiesResponse(
         video_models=video_models,
         image_models=[
@@ -96,11 +83,7 @@ def get_capabilities():
 @app.post("/api/script", response_model=ScriptResponse)
 async def create_script(req: ScriptRequest):
     raw_scenes = await groq_client.generate_storyboard(topic=req.topic, language=req.language, scene_count=req.scene_count, tone=req.tone)
-    scenes = [
-        Scene(index=i, narration=str(scene.get("narration", "")).strip() or "Narration not supplied.", visual_prompt=str(scene.get("visual_prompt", "")).strip() or "Visual prompt not supplied.", duration_seconds=scene.get("duration_seconds", 5))
-        for i, scene in enumerate(raw_scenes)
-        if isinstance(scene, dict)
-    ]
+    scenes = [Scene(index=i, narration=str(scene.get("narration", "")).strip() or "Narration not supplied.", visual_prompt=str(scene.get("visual_prompt", "")).strip() or "Visual prompt not supplied.", duration_seconds=scene.get("duration_seconds", 5)) for i, scene in enumerate(raw_scenes) if isinstance(scene, dict)]
     if not scenes:
         raise HTTPException(status_code=502, detail="Storyboard provider returned no usable scenes.")
     return ScriptResponse(topic=req.topic, language=req.language, scenes=scenes)
@@ -131,8 +114,7 @@ async def upload_image(file: UploadFile = File(...)):
     if not content:
         raise HTTPException(status_code=422, detail="The selected image file is empty.")
     if len(content) > config.MAX_IMAGE_UPLOAD_BYTES:
-        limit_mb = config.MAX_IMAGE_UPLOAD_BYTES // (1024 * 1024)
-        raise HTTPException(status_code=413, detail=f"Image must be no larger than {limit_mb} MB.")
+        raise HTTPException(status_code=413, detail=f"Image must be no larger than {config.MAX_IMAGE_UPLOAD_BYTES // (1024 * 1024)} MB.")
     provider_file_path = await magic_hour.upload_image(filename=filename, content=content, content_type=content_type or None)
     asset = asset_store.put(filename=filename, provider_file_path=provider_file_path)
     return UploadImageResponse(asset_id=asset.asset_id, filename=asset.filename, expires_at=asset.expires_at)
