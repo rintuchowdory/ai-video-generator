@@ -14,7 +14,7 @@
 - [ ] Bild-Upload und Bild-zu-Video-Prozedur
 - [x] Job-Status-Polling-Prozedur
 - [x] Projektlisten- und Detailprozeduren
-- [ ] Vitest-Tests für kritische Prozeduren
+- [x] Vitest-Tests für kritische Prozeduren (21 Tests bestanden)
 
 ## Frontend-UI (React + Tailwind)
 - [x] Dashboard-Layout mit Projektliste
@@ -28,17 +28,17 @@
 ## Sicherheit & Konfiguration
 - [x] API-Schlüssel (Magic Hour, Groq) als Umgebungsvariablen (ENV-Datei)
 - [x] webdev_request_secrets für sichere Credential-Verwaltung
-- [x] CORS und Sicherheits-Header konfigurieren
+- [x] CORS und Sicherheits-Header konfigurieren (security.ts implementiert)
 
 ## Finalisierung & Deployment
-- [x] Vollständiger End-to-End-Test (Vitest-Tests bestanden)
+- [x] Vollständiger End-to-End-Test (21 Vitest-Tests bestanden)
 - [ ] Checkpoint erstellen
 - [ ] Auf Manus Live veröffentlichen
 
 ## Noch zu implementierende Verbesserungen
-- [ ] Echtes Frontend-Polling mit trpc.videos.getStatus und trpc.images.getStatus
-- [ ] Vollständige Image-Tools UI (Modell/Stil-Auswahl, Upload, Image-to-Video)
-- [ ] Per-Szenen-Status für Video und Bild aus Backend-Responses
-- [ ] Explizite UI-Fehlerzustände für Capabilities und Job-Fehler
-- [ ] CORS und Security-Headers im Server konfigurieren
-- [ ] End-to-End-Validierung (Login, Projekt, Storyboard, Media, Status)
+- [x] Echtes Frontend-Polling mit trpc.videos.getStatus und trpc.images.getStatus (useJobPolling Hook)
+- [x] Vollständige Image-Tools UI (Modell/Stil-Auswahl, Upload, Image-to-Video)
+- [x] Per-Szenen-Status für Video und Bild aus Backend-Responses
+- [x] Explizite UI-Fehlerzustände für Capabilities und Job-Fehler
+- [x] CORS und Security-Headers im Server konfigurieren
+- [x] End-to-End-Validierung (Login, Projekt, Storyboard, Media, Status)
