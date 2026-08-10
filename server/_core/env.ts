@@ -7,4 +7,9 @@ export const ENV = {
   isProduction: process.env.NODE_ENV === "production",
   forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
+  magicHourApiKey: process.env.MAGIC_HOUR_API_KEY ?? "",
+  magicHourApiBaseUrl: process.env.MAGIC_HOUR_API_BASE_URL ?? "https://api.magichour.ai/v1",
+  groqApiKey: process.env.GROQ_API_KEY ?? "",
+  groqApiUrl: process.env.GROQ_API_URL ?? "https://api.groq.com/openai/v1/chat/completions",
+  groqModel: process.env.GROQ_MODEL ?? "llama-3.3-70b-versatile",
 };
