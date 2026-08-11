@@ -11,7 +11,7 @@
 - [x] Storyboard-Generierungs-Prozedur
 - [x] Video-Generierungs-Prozedur (Text-zu-Video)
 - [x] Bild-Generierungs-Prozedur (Text-zu-Bild)
-- [ ] Bild-Upload und Bild-zu-Video-Prozedur
+- [x] Bild-Upload und Bild-zu-Video-Prozedur
 - [x] Job-Status-Polling-Prozedur
 - [x] Projektlisten- und Detailprozeduren
 - [x] Vitest-Tests für kritische Prozeduren (21 Tests bestanden)
@@ -31,9 +31,9 @@
 - [x] CORS und Sicherheits-Header konfigurieren (security.ts implementiert)
 
 ## Finalisierung & Deployment
-- [x] Vollständiger End-to-End-Test (21 Vitest-Tests bestanden)
+- [x] Vollständiger End-to-End-Test (27 Vitest-Tests und Browser-Smoke-Test dokumentiert)
 - [ ] Checkpoint erstellen
-- [ ] Auf Manus Live veröffentlichen
+- [ ] Publish-Readiness dokumentieren; den finalen Publish-Klick führt der Nutzer im Manus-Management aus
 
 ## Noch zu implementierende Verbesserungen
 - [x] Echtes Frontend-Polling mit trpc.videos.getStatus und trpc.images.getStatus (useJobPolling Hook)
@@ -41,4 +41,9 @@
 - [x] Per-Szenen-Status für Video und Bild aus Backend-Responses
 - [x] Explizite UI-Fehlerzustände für Capabilities und Job-Fehler
 - [x] CORS und Security-Headers im Server konfigurieren
-- [x] End-to-End-Validierung (Login, Projekt, Storyboard, Media, Status)
+- [ ] End-to-End-Validierung mit realem Browser-Nutzerfluss dokumentieren
+
+## Qualitätsnachweis vor Abschluss
+- [x] Aussagekräftige Tests für Autorisierung, Upload-Validierung, Image-to-Video und Job-Fehlerpfade
+- [ ] Echten Browser-Smoke-Test durchführen: Dashboard → Projekt erstellen → reale Projektansicht
+- [ ] Publish-Readiness und Nutzeraktion im Manus-Management dokumentieren

@@ -5,151 +5,117 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, ArrowLeft, Play, AlertCircle, CheckCircle2, Clock } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Loader2, ArrowLeft, Play, AlertCircle, CheckCircle2, Clock, Upload, ImagePlus } from "lucide-react";
 import { useLocation } from "wouter";
 import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
+import { useJobPolling } from "@/hooks/useJobPolling";
+
+type CapabilityModel = {
+  id: string;
+  name: string;
+  type: "text-to-video" | "text-to-image" | "image-to-video";
+  resolutions: string[];
+  aspectRatios: string[];
+  maxDurationSeconds: number;
+  minDurationSeconds: number;
+};
 
 export default function ProjectDetail(props: any) {
   const { user } = useAuth();
   const [, navigate] = useLocation();
-  const projectId = parseInt(props.projectId, 10);
+  const projectId = Number(props.projectId);
   const [topic, setTopic] = useState("");
-  const [language, setLanguage] = useState<"de" | "en">("de" as const);
+  const [language, setLanguage] = useState<"de" | "en">("de");
 
-  const { data: project, isLoading: projectLoading } = trpc.projects.get.useQuery(
+  const projectQuery = trpc.projects.get.useQuery({ projectId }, { enabled: !!user && Number.isFinite(projectId) });
+  const scenesQuery = trpc.scenes.list.useQuery(
     { projectId },
-    { enabled: !!user }
+    { enabled: !!user && !!projectQuery.data && Number.isFinite(projectId) },
   );
-
-  const { data: scenes, isLoading: scenesLoading, refetch: refetchScenes } = trpc.scenes.list.useQuery(
-    { projectId },
-    { enabled: !!user && !!project }
-  );
-
-  const { data: capabilities } = trpc.provider.capabilities.useQuery();
+  const capabilitiesQuery = trpc.provider.capabilities.useQuery();
 
   const generateStoryboardMutation = trpc.storyboard.generate.useMutation({
-    onSuccess: () => {
-      toast.success("Storyboard erstellt!");
+    onSuccess: async () => {
+      toast.success("Storyboard erstellt");
       setTopic("");
-      refetchScenes();
+      await scenesQuery.refetch();
     },
-    onError: (error) => {
-      toast.error(error.message || "Fehler beim Erstellen des Storyboards");
-    },
+    onError: (error) => toast.error(error.message || "Storyboard konnte nicht erstellt werden"),
   });
 
-  if (projectLoading) {
+  if (projectQuery.isLoading) {
+    return <LoadingState label="Projekt wird geladen ..." />;
+  }
+
+  if (projectQuery.error || !projectQuery.data) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="animate-spin w-8 h-8" />
+      <div className="min-h-screen bg-background p-6">
+        <Alert variant="destructive" className="mx-auto max-w-2xl">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Projekt nicht verfügbar</AlertTitle>
+          <AlertDescription>{projectQuery.error?.message || "Das Projekt wurde nicht gefunden."}</AlertDescription>
+        </Alert>
       </div>
     );
   }
 
-  if (!project) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>Projekt nicht gefunden</CardTitle>
-          </CardHeader>
-        </Card>
-      </div>
-    );
-  }
+  const project = projectQuery.data;
+  const scenes = scenesQuery.data ?? [];
+  const capabilities = capabilitiesQuery.data;
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto py-8 px-4">
+      <div className="container mx-auto max-w-6xl px-4 py-8">
         <Button variant="ghost" onClick={() => navigate("/dashboard")} className="mb-6">
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Zurück zum Dashboard
+          <ArrowLeft className="mr-2 h-4 w-4" /> Zurück zum Dashboard
         </Button>
 
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">{project.title}</h1>
-          <p className="text-muted-foreground">{project.description}</p>
+          <p className="text-sm font-medium uppercase tracking-widest text-primary">Projektstudio</p>
+          <h1 className="mt-2 text-3xl font-bold">{project.title}</h1>
+          <p className="mt-2 text-muted-foreground">{project.description || "Storyboard und Medienproduktion"}</p>
         </div>
 
-        {!scenes || scenes.length === 0 ? (
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle>Storyboard generieren</CardTitle>
-              <CardDescription>Geben Sie ein Thema ein, um ein Storyboard zu generieren.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="topic">Thema</Label>
-                  <Textarea
-                    id="topic"
-                    placeholder="z.B. Eröffnung unseres neuen Cafés in Aachen mit modernem Interieur und freundlichem Personal"
-                    value={topic}
-                    onChange={(e) => setTopic(e.target.value)}
-                    rows={4}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="language">Sprache</Label>
-                  <Select value={language} onValueChange={(value) => setLanguage(value as "de" | "en")}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="de">Deutsch</SelectItem>
-                      <SelectItem value="en">English</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button
-                  onClick={() =>
-                    generateStoryboardMutation.mutate({
-                      projectId,
-                      topic,
-                      language,
-                    })
-                  }
-                  disabled={!topic || generateStoryboardMutation.isPending}
-                  className="w-full"
-                >
-                  {generateStoryboardMutation.isPending ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Generiere Storyboard...
-                    </>
-                  ) : (
-                    "Storyboard generieren"
-                  )}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold">Szenen ({scenes.length})</h2>
-            </div>
+        {capabilitiesQuery.isLoading && (
+          <Alert className="mb-6"><Clock className="h-4 w-4" /><AlertTitle>Provider wird geladen</AlertTitle><AlertDescription>Die verfügbaren Modelle und Einstellungen werden geladen.</AlertDescription></Alert>
+        )}
+        {capabilitiesQuery.error && (
+          <Alert variant="destructive" className="mb-6"><AlertCircle className="h-4 w-4" /><AlertTitle>Provider-Einstellungen nicht verfügbar</AlertTitle><AlertDescription>{capabilitiesQuery.error.message}. Bitte laden Sie die Seite neu.</AlertDescription></Alert>
+        )}
 
-            {scenesLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="animate-spin w-8 h-8" />
+        {scenes.length === 0 ? (
+          <StoryboardForm
+            topic={topic}
+            language={language}
+            isPending={generateStoryboardMutation.isPending}
+            onTopicChange={setTopic}
+            onLanguageChange={setLanguage}
+            onSubmit={() => generateStoryboardMutation.mutate({ projectId, topic, language })}
+          />
+        ) : (
+          <div className="space-y-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-semibold">Storyboard</h2>
+                <p className="text-sm text-muted-foreground">{scenes.length} Szenen · Änderungen werden pro Szene gespeichert.</p>
               </div>
-            ) : (
-              <div className="space-y-4">
-                {scenes.map((scene) => (
-                  <SceneCard
-                    key={scene.id}
-                    scene={scene}
-                    projectId={projectId}
-                    capabilities={capabilities}
-                    onUpdate={() => refetchScenes()}
-                  />
-                ))}
-              </div>
-            )}
+              {scenesQuery.isFetching && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />}
+            </div>
+            {scenesQuery.error && <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Szenen konnten nicht geladen werden</AlertTitle><AlertDescription>{scenesQuery.error.message}</AlertDescription></Alert>}
+            {scenes.map((scene) => (
+              <SceneCard
+                key={scene.id}
+                scene={scene}
+                projectId={projectId}
+                capabilities={capabilities?.models ?? []}
+                imageStyles={capabilities?.imageStyles ?? []}
+                capabilitiesError={capabilitiesQuery.error?.message}
+                onUpdate={() => scenesQuery.refetch()}
+              />
+            ))}
           </div>
         )}
       </div>
@@ -157,7 +123,62 @@ export default function ProjectDetail(props: any) {
   );
 }
 
-function SceneCard({ scene, projectId, capabilities, onUpdate }: any) {
+function StoryboardForm({
+  topic,
+  language,
+  isPending,
+  onTopicChange,
+  onLanguageChange,
+  onSubmit,
+}: {
+  topic: string;
+  language: "de" | "en";
+  isPending: boolean;
+  onTopicChange: (value: string) => void;
+  onLanguageChange: (value: "de" | "en") => void;
+  onSubmit: () => void;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Storyboard generieren</CardTitle>
+        <CardDescription>Beschreiben Sie die Idee. Groq erstellt daraus Szenen mit Narration und visuellen Prompts.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div>
+          <Label htmlFor="topic">Thema oder Kampagnenidee</Label>
+          <Textarea id="topic" rows={5} value={topic} onChange={(event) => onTopicChange(event.target.value)} placeholder="z. B. Eröffnung unseres neuen Cafés in Aachen ..." />
+        </div>
+        <div>
+          <Label htmlFor="storyboard-language">Ausgabesprache</Label>
+          <Select value={language} onValueChange={(value) => onLanguageChange(value as "de" | "en")}>
+            <SelectTrigger id="storyboard-language"><SelectValue /></SelectTrigger>
+            <SelectContent><SelectItem value="de">Deutsch</SelectItem><SelectItem value="en">English</SelectItem></SelectContent>
+          </Select>
+        </div>
+        <Button className="w-full" disabled={!topic.trim() || isPending} onClick={onSubmit}>
+          {isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Storyboard wird erstellt ...</> : "Storyboard generieren"}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SceneCard({
+  scene,
+  projectId,
+  capabilities,
+  imageStyles,
+  capabilitiesError,
+  onUpdate,
+}: {
+  scene: any;
+  projectId: number;
+  capabilities: CapabilityModel[];
+  imageStyles: string[];
+  capabilitiesError?: string;
+  onUpdate: () => void;
+}) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [formData, setFormData] = useState({
@@ -169,284 +190,116 @@ function SceneCard({ scene, projectId, capabilities, onUpdate }: any) {
     aspectRatio: scene.aspectRatio,
     generateAudio: scene.generateAudio,
   });
+  const [imageModel, setImageModel] = useState("flux-schnell");
+  const [imageResolution, setImageResolution] = useState("1k");
+  const [imageStyle, setImageStyle] = useState(imageStyles[0] || "general");
+  const [uploadedAsset, setUploadedAsset] = useState<{ assetId: number; url: string; filename: string } | null>(null);
+  const [videoJobId, setVideoJobId] = useState<string | undefined>(scene.videoJobId ?? undefined);
+  const [imageJobId, setImageJobId] = useState<string | undefined>(scene.imageJobId ?? undefined);
+  const [videoStatus, setVideoStatus] = useState(scene.videoStatus || "pending");
+  const [imageStatus, setImageStatus] = useState(scene.imageStatus || "pending");
+  const [videoUrl, setVideoUrl] = useState<string | undefined>(scene.videoUrl ?? undefined);
+  const [imageUrl, setImageUrl] = useState<string | undefined>(scene.imageUrl ?? undefined);
+  const [pollingError, setPollingError] = useState<string | undefined>();
 
-  const [videoStatus, setVideoStatus] = useState(scene.videoStatus);
-  const [imageStatus, setImageStatus] = useState(scene.imageStatus);
-  const [pollingActive, setPollingActive] = useState(false);
+  const videoPolling = useJobPolling({ jobId: videoJobId, type: "video", onStatusChange: setVideoStatus, onError: setPollingError });
+  const imagePolling = useJobPolling({ jobId: imageJobId, type: "image", onStatusChange: setImageStatus, onError: setPollingError });
 
-  const updateSceneMutation = trpc.scenes.update.useMutation({
-    onSuccess: () => {
-      toast.success("Szene aktualisiert!");
-      setEditMode(false);
-      onUpdate();
-    },
-    onError: (error) => {
-      toast.error(error.message || "Fehler beim Aktualisieren der Szene");
-    },
-  });
-
-  const generateVideoMutation = trpc.videos.generateTextToVideo.useMutation({
-    onSuccess: (data) => {
-      toast.success("Video-Generierung gestartet!");
-      setVideoStatus("processing");
-      setPollingActive(true);
-      onUpdate();
-    },
-    onError: (error) => {
-      toast.error(error.message || "Fehler beim Starten der Video-Generierung");
-    },
-  });
-
-  const generateImageMutation = trpc.images.generateTextToImage.useMutation({
-    onSuccess: () => {
-      toast.success("Bild-Generierung gestartet!");
-      setImageStatus("processing");
-      setPollingActive(true);
-      onUpdate();
-    },
-    onError: (error) => {
-      toast.error(error.message || "Fehler beim Starten der Bild-Generierung");
-    },
-  });
-
-  // Polling für Video-Status
+  useEffect(() => { if (videoPolling.result?.videoUrl) setVideoUrl(videoPolling.result.videoUrl); }, [videoPolling.result]);
+  useEffect(() => { if (imagePolling.result?.imageUrl) setImageUrl(imagePolling.result.imageUrl); }, [imagePolling.result]);
   useEffect(() => {
-    if (!scene.videoJobId || videoStatus === "completed" || videoStatus === "failed") {
-      setPollingActive(false);
-      return;
-    }
+    setVideoJobId(scene.videoJobId ?? undefined);
+    setImageJobId(scene.imageJobId ?? undefined);
+    setVideoStatus(scene.videoStatus || "pending");
+    setImageStatus(scene.imageStatus || "pending");
+    setVideoUrl(scene.videoUrl ?? undefined);
+    setImageUrl(scene.imageUrl ?? undefined);
+  }, [scene.videoJobId, scene.imageJobId, scene.videoStatus, scene.imageStatus, scene.videoUrl, scene.imageUrl]);
 
-    const pollInterval = setInterval(async () => {
-      try {
-        // Status wird über die Query abgerufen
-      } catch (error) {
-        console.error("Polling error:", error);
-      }
-    }, 3000); // Poll alle 3 Sekunden
+  const videoModels = capabilities.filter((model) => model.type === "text-to-video");
+  const imageModels = capabilities.filter((model) => model.type === "text-to-image");
+  const selectedVideoModel = videoModels.find((model) => model.id === formData.model) || videoModels[0];
 
-    return () => clearInterval(pollInterval);
-  }, [scene.videoJobId, videoStatus]);
+  const updateSceneMutation = trpc.scenes.update.useMutation({ onSuccess: () => { toast.success("Szene aktualisiert"); setEditMode(false); onUpdate(); }, onError: (error) => toast.error(error.message || "Szene konnte nicht aktualisiert werden") });
+  const generateVideoMutation = trpc.videos.generateTextToVideo.useMutation({ onSuccess: (data) => { setVideoJobId(data.jobId); setVideoStatus("processing"); setPollingError(undefined); toast.success("Video-Generierung gestartet"); onUpdate(); }, onError: (error) => { setVideoStatus("failed"); toast.error(error.message || "Video konnte nicht gestartet werden"); } });
+  const generateImageMutation = trpc.images.generateTextToImage.useMutation({ onSuccess: (data) => { setImageJobId(data.jobId); setImageStatus("processing"); setPollingError(undefined); toast.success("Referenzbild-Generierung gestartet"); onUpdate(); }, onError: (error) => { setImageStatus("failed"); toast.error(error.message || "Bild konnte nicht gestartet werden"); } });
+  const uploadAssetMutation = trpc.assets.upload.useMutation({ onSuccess: (data, variables) => { setUploadedAsset({ assetId: data.assetId, url: data.url, filename: variables.filename }); toast.success("Bild sicher hochgeladen"); }, onError: (error) => toast.error(error.message || "Upload fehlgeschlagen") });
+  const animateImageMutation = trpc.images.generateImageToVideo.useMutation({ onSuccess: (data) => { setVideoJobId(data.jobId); setVideoStatus("processing"); setPollingError(undefined); toast.success("Bildanimation gestartet"); onUpdate(); }, onError: (error) => { setVideoStatus("failed"); toast.error(error.message || "Bildanimation konnte nicht gestartet werden"); } });
 
-  const handleSave = () => {
-    updateSceneMutation.mutate({
-      sceneId: scene.id,
-      projectId,
-      ...formData,
-    });
+  const onFileSelected = (file?: File) => {
+    if (!file) return;
+    const allowed = ["image/png", "image/jpeg", "image/webp", "image/avif"];
+    if (!allowed.includes(file.type)) { toast.error("Erlaubt sind PNG, JPG, WebP und AVIF"); return; }
+    if (file.size > 8 * 1024 * 1024) { toast.error("Das Bild darf höchstens 8 MB groß sein"); return; }
+    const reader = new FileReader();
+    reader.onload = () => uploadAssetMutation.mutate({ projectId, filename: file.name, mimeType: file.type as "image/png" | "image/jpeg" | "image/webp" | "image/avif", dataBase64: String(reader.result || "") });
+    reader.onerror = () => toast.error("Die Bilddatei konnte nicht gelesen werden");
+    reader.readAsDataURL(file);
   };
 
-  const handleGenerateVideo = () => {
-    generateVideoMutation.mutate({
-      sceneId: scene.id,
-      projectId,
-      prompt: formData.visualPrompt,
-      model: formData.model,
-      resolution: formData.resolution,
-      aspectRatio: formData.aspectRatio,
-      durationSeconds: formData.durationSeconds,
-      generateAudio: formData.generateAudio,
-    });
+  const saveScene = () => updateSceneMutation.mutate({ sceneId: scene.id, projectId, ...formData });
+  const generateVideo = () => generateVideoMutation.mutate({ sceneId: scene.id, projectId, prompt: formData.visualPrompt, model: formData.model, resolution: formData.resolution, aspectRatio: formData.aspectRatio, durationSeconds: formData.durationSeconds, generateAudio: formData.generateAudio });
+  const generateImage = () => generateImageMutation.mutate({ sceneId: scene.id, projectId, prompt: formData.visualPrompt, model: imageModel, resolution: imageResolution, style: imageStyle });
+  const animateUploadedImage = () => {
+    if (!uploadedAsset) { toast.error("Bitte laden Sie zuerst ein Referenzbild hoch"); return; }
+    animateImageMutation.mutate({ sceneId: scene.id, projectId, assetId: uploadedAsset.assetId, prompt: formData.visualPrompt, model: formData.model, resolution: formData.resolution, aspectRatio: formData.aspectRatio, durationSeconds: formData.durationSeconds, generateAudio: formData.generateAudio });
   };
 
-  const handleGenerateImage = () => {
-    generateImageMutation.mutate({
-      sceneId: scene.id,
-      projectId,
-      prompt: formData.visualPrompt,
-      model: "flux-schnell",
-      resolution: "1k",
-      style: "general",
-    });
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "completed":
-        return <CheckCircle2 className="w-4 h-4 text-green-600" />;
-      case "processing":
-        return <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />;
-      case "failed":
-        return <AlertCircle className="w-4 h-4 text-red-600" />;
-      default:
-        return <Clock className="w-4 h-4 text-gray-600" />;
-    }
-  };
-
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case "completed":
-        return "Fertig";
-      case "processing":
-        return "Wird generiert...";
-      case "failed":
-        return "Fehler";
-      default:
-        return "Ausstehend";
-    }
-  };
+  const statusPill = (label: string, status: string) => (
+    <div className="flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs">
+      {status === "completed" ? <CheckCircle2 className="h-3.5 w-3.5 text-green-600" /> : status === "processing" ? <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-600" /> : status === "failed" ? <AlertCircle className="h-3.5 w-3.5 text-red-600" /> : <Clock className="h-3.5 w-3.5 text-muted-foreground" />}
+      <span>{label}: {status === "completed" ? "Fertig" : status === "processing" ? "In Arbeit" : status === "failed" ? "Fehler" : "Ausstehend"}</span>
+    </div>
+  );
 
   return (
     <Card>
-      <CardHeader
-        className="cursor-pointer hover:bg-muted/50 transition-colors"
-        onClick={() => setIsExpanded(!isExpanded)}
-      >
-        <div className="flex justify-between items-start">
-          <div className="flex-1">
-            <CardTitle>Szene {scene.sceneNumber}</CardTitle>
-            <CardDescription className="line-clamp-2 mt-2">{scene.narration}</CardDescription>
-          </div>
-          <div className="ml-4 flex gap-2">
-            {videoStatus && (
-              <div className="flex items-center gap-1 px-3 py-1 bg-muted rounded-full text-sm">
-                {getStatusIcon(videoStatus)}
-                <span>{getStatusLabel(videoStatus)}</span>
-              </div>
-            )}
-          </div>
+      <CardHeader className="cursor-pointer hover:bg-muted/50" onClick={() => setIsExpanded(!isExpanded)}>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div><CardTitle>Szene {scene.sceneNumber}</CardTitle><CardDescription className="mt-2 line-clamp-2">{scene.narration}</CardDescription></div>
+          <div className="flex flex-wrap gap-2">{statusPill("Video", videoStatus)}{statusPill("Bild", imageStatus)}</div>
         </div>
       </CardHeader>
-
       {isExpanded && (
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-5">
+          {pollingError && <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Job-Status konnte nicht aktualisiert werden</AlertTitle><AlertDescription>{pollingError}</AlertDescription></Alert>}
+          {capabilitiesError && <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Provider-Optionen fehlen</AlertTitle><AlertDescription>{capabilitiesError}</AlertDescription></Alert>}
           {editMode ? (
             <>
-              <div>
-                <Label>Narration</Label>
-                <Textarea
-                  value={formData.narration}
-                  onChange={(e) => setFormData({ ...formData, narration: e.target.value })}
-                />
+              <div><Label>Narration</Label><Textarea value={formData.narration} onChange={(event) => setFormData({ ...formData, narration: event.target.value })} /></div>
+              <div><Label>Visueller Prompt</Label><Textarea value={formData.visualPrompt} onChange={(event) => setFormData({ ...formData, visualPrompt: event.target.value })} /></div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div><Label>Video-Modell</Label><Select value={formData.model} onValueChange={(value) => setFormData({ ...formData, model: value })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{videoModels.map((model) => <SelectItem key={model.id} value={model.id}>{model.name}</SelectItem>)}</SelectContent></Select></div>
+                <div><Label>Auflösung</Label><Select value={formData.resolution} onValueChange={(value) => setFormData({ ...formData, resolution: value })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{(selectedVideoModel?.resolutions || [formData.resolution]).map((resolution) => <SelectItem key={resolution} value={resolution}>{resolution}</SelectItem>)}</SelectContent></Select></div>
+                <div><Label>Seitenverhältnis</Label><Select value={formData.aspectRatio} onValueChange={(value) => setFormData({ ...formData, aspectRatio: value })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{(selectedVideoModel?.aspectRatios || [formData.aspectRatio]).map((ratio) => <SelectItem key={ratio} value={ratio}>{ratio}</SelectItem>)}</SelectContent></Select></div>
+                <div><Label>Dauer (Sekunden)</Label><Input type="number" min={selectedVideoModel?.minDurationSeconds || 1} max={selectedVideoModel?.maxDurationSeconds || 30} value={formData.durationSeconds} onChange={(event) => setFormData({ ...formData, durationSeconds: Number(event.target.value) })} /></div>
               </div>
-              <div>
-                <Label>Visueller Prompt</Label>
-                <Textarea
-                  value={formData.visualPrompt}
-                  onChange={(e) => setFormData({ ...formData, visualPrompt: e.target.value })}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Modell</Label>
-                  <Select value={formData.model} onValueChange={(value) => setFormData({ ...formData, model: value })}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {capabilities?.models
-                        ?.filter((m: any) => m.type === "text-to-video")
-                        .map((m: any) => (
-                          <SelectItem key={m.id} value={m.id}>
-                            {m.name}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Auflösung</Label>
-                  <Select value={formData.resolution} onValueChange={(value) => setFormData({ ...formData, resolution: value })}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {capabilities?.models
-                        ?.find((m: any) => m.id === formData.model)
-                        ?.resolutions.map((r: string) => (
-                          <SelectItem key={r} value={r}>
-                            {r}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Seitenverhältnis</Label>
-                  <Select value={formData.aspectRatio} onValueChange={(value) => setFormData({ ...formData, aspectRatio: value })}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {capabilities?.models
-                        ?.find((m: any) => m.id === formData.model)
-                        ?.aspectRatios.map((ar: string) => (
-                          <SelectItem key={ar} value={ar}>
-                            {ar}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Dauer (Sekunden)</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={30}
-                    value={formData.durationSeconds}
-                    onChange={(e) => setFormData({ ...formData, durationSeconds: parseInt(e.target.value) })}
-                  />
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <Button onClick={handleSave} disabled={updateSceneMutation.isPending}>
-                  {updateSceneMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Speichern"}
-                </Button>
-                <Button variant="outline" onClick={() => setEditMode(false)}>
-                  Abbrechen
-                </Button>
-              </div>
+              <div className="flex gap-2"><Button onClick={saveScene} disabled={updateSceneMutation.isPending}>{updateSceneMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Speichern"}</Button><Button variant="outline" onClick={() => setEditMode(false)}>Abbrechen</Button></div>
             </>
           ) : (
             <>
-              <div>
-                <Label className="text-muted-foreground">Narration</Label>
-                <p className="mt-1">{scene.narration}</p>
-              </div>
-              <div>
-                <Label className="text-muted-foreground">Visueller Prompt</Label>
-                <p className="mt-1">{scene.visualPrompt}</p>
-              </div>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Modell:</span> {scene.model}
+              <div><Label className="text-muted-foreground">Narration</Label><p className="mt-1">{scene.narration}</p></div>
+              <div><Label className="text-muted-foreground">Visueller Prompt</Label><p className="mt-1">{scene.visualPrompt}</p></div>
+              <div className="grid gap-2 text-sm md:grid-cols-4"><span><b>Modell:</b> {scene.model}</span><span><b>Auflösung:</b> {scene.resolution}</span><span><b>Format:</b> {scene.aspectRatio}</span><span><b>Dauer:</b> {scene.durationSeconds}s</span></div>
+              {videoUrl && <div><Label className="text-muted-foreground">Video</Label><video src={videoUrl} controls className="mt-2 w-full rounded-lg" /></div>}
+              {imageUrl && <div><Label className="text-muted-foreground">Referenzbild</Label><img src={imageUrl} alt={`Referenz für Szene ${scene.sceneNumber}`} className="mt-2 max-h-96 w-full rounded-lg object-contain" /></div>}
+              <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => setEditMode(true)}>Bearbeiten</Button><Button onClick={generateVideo} disabled={generateVideoMutation.isPending || !capabilities.length}><Play className="mr-2 h-4 w-4" />{generateVideoMutation.isPending ? "Starte ..." : "Video generieren"}</Button></div>
+
+              <div className="rounded-lg border bg-muted/20 p-4">
+                <div className="mb-3 flex items-center gap-2"><ImagePlus className="h-5 w-5 text-primary" /><h3 className="font-semibold">Bildreferenz und Animation</h3></div>
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div><Label>Bildmodell</Label><Select value={imageModel} onValueChange={setImageModel}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{imageModels.map((model) => <SelectItem key={model.id} value={model.id}>{model.name}</SelectItem>)}</SelectContent></Select></div>
+                  <div><Label>Bildauflösung</Label><Select value={imageResolution} onValueChange={setImageResolution}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{(imageModels.find((model) => model.id === imageModel)?.resolutions || ["1k"]).map((resolution) => <SelectItem key={resolution} value={resolution}>{resolution}</SelectItem>)}</SelectContent></Select></div>
+                  <div><Label>Bildstil</Label><Select value={imageStyle} onValueChange={setImageStyle}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{(imageStyles.length ? imageStyles : ["general"]).map((style) => <SelectItem key={style} value={style}>{style}</SelectItem>)}</SelectContent></Select></div>
                 </div>
-                <div>
-                  <span className="text-muted-foreground">Auflösung:</span> {scene.resolution}
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Button variant="outline" onClick={generateImage} disabled={generateImageMutation.isPending || !imageModels.length}><ImagePlus className="mr-2 h-4 w-4" />{generateImageMutation.isPending ? "Erstelle Bild ..." : "Bild aus Prompt erstellen"}</Button>
+                  <label className="inline-flex cursor-pointer items-center rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted"><Upload className="mr-2 h-4 w-4" />{uploadAssetMutation.isPending ? "Lade hoch ..." : "Bild hochladen"}<input className="sr-only" type="file" accept="image/png,image/jpeg,image/webp,image/avif" onChange={(event) => onFileSelected(event.target.files?.[0])} /></label>
+                  <Button onClick={animateUploadedImage} disabled={animateImageMutation.isPending || !uploadedAsset}><Play className="mr-2 h-4 w-4" />{animateImageMutation.isPending ? "Animiert ..." : "Hochgeladenes Bild animieren"}</Button>
                 </div>
-                <div>
-                  <span className="text-muted-foreground">Seitenverhältnis:</span> {scene.aspectRatio}
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Dauer:</span> {scene.durationSeconds}s
-                </div>
-              </div>
-              {scene.videoUrl && (
-                <div>
-                  <Label className="text-muted-foreground">Video</Label>
-                  <video src={scene.videoUrl} controls className="w-full rounded mt-2" />
-                </div>
-              )}
-              {scene.imageUrl && (
-                <div>
-                  <Label className="text-muted-foreground">Referenzbild</Label>
-                  <img src={scene.imageUrl} alt="Reference" className="w-full rounded mt-2" />
-                </div>
-              )}
-              <div className="flex gap-2 flex-wrap">
-                <Button onClick={() => setEditMode(true)} variant="outline">
-                  Bearbeiten
-                </Button>
-                <Button onClick={handleGenerateImage} disabled={generateImageMutation.isPending} variant="outline">
-                  {generateImageMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : "🎨"}
-                  Bild generieren
-                </Button>
-                <Button onClick={handleGenerateVideo} disabled={generateVideoMutation.isPending}>
-                  <Play className="w-4 h-4 mr-2" />
-                  {generateVideoMutation.isPending ? "Generiere..." : "Video generieren"}
-                </Button>
+                {uploadedAsset && <p className="mt-3 text-sm text-muted-foreground">Referenz bereit: <span className="font-medium text-foreground">{uploadedAsset.filename}</span></p>}
+                {imageStatus === "failed" && <p className="mt-3 text-sm text-destructive">Die Bildgenerierung ist fehlgeschlagen. Bitte Einstellungen prüfen und erneut versuchen.</p>}
+                {videoStatus === "failed" && <p className="mt-3 text-sm text-destructive">Die Videogenerierung ist fehlgeschlagen. Bitte Einstellungen prüfen und erneut versuchen.</p>}
               </div>
             </>
           )}
@@ -454,4 +307,8 @@ function SceneCard({ scene, projectId, capabilities, onUpdate }: any) {
       )}
     </Card>
   );
+}
+
+function LoadingState({ label }: { label: string }) {
+  return <div className="flex min-h-screen items-center justify-center gap-3 bg-background text-muted-foreground"><Loader2 className="h-6 w-6 animate-spin" />{label}</div>;
 }

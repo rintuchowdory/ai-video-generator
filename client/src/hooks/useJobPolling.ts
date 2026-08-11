@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 
 export interface JobPollingOptions {
@@ -20,7 +20,10 @@ export function useJobPolling({
     { jobId: jobId || "" },
     {
       enabled: !!jobId && type === "video",
-      refetchInterval: pollInterval,
+      refetchInterval: (query) => {
+        const status = (query.state.data as any)?.status;
+        return status === "completed" || status === "failed" ? false : pollInterval;
+      },
     }
   );
 
@@ -28,7 +31,10 @@ export function useJobPolling({
     { jobId: jobId || "" },
     {
       enabled: !!jobId && type === "image",
-      refetchInterval: pollInterval,
+      refetchInterval: (query) => {
+        const status = (query.state.data as any)?.status;
+        return status === "completed" || status === "failed" ? false : pollInterval;
+      },
     }
   );
 

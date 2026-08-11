@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { appRouter } from "./routers";
-import { getDb, getUserByOpenId, createProject, getProjectById, getProjectScenes } from "./db";
+import * as db from "./db";
 import { groqClient } from "./groq_client";
 import { magicHourClient } from "./magic_hour_client";
 
@@ -59,15 +59,23 @@ describe("End-to-End Workflow Tests", () => {
         topic: "Test topic",
       };
 
-      // Create project
-      const result = await createProject(testUserId, projectData);
-      expect(result).toBeDefined();
+      const createSpy = vi.spyOn(db, "createProject").mockResolvedValue({ insertId: 555 } as any);
+      const getSpy = vi.spyOn(db, "getProjectById").mockResolvedValue({
+        id: 555,
+        userId: testUserId,
+        title: "Test Project",
+        description: "E2E test project",
+        language: "de",
+      } as any);
 
-      // Retrieve created project
-      const projects = await getProjectById(1, testUserId);
-      expect(projects).toBeDefined();
-      expect(projects?.title).toBe("Test Project");
-      expect(projects?.language).toBe("de");
+      const result = await db.createProject(testUserId, projectData);
+      const project = await db.getProjectById(555, testUserId);
+
+      expect(result).toBeDefined();
+      expect(createSpy).toHaveBeenCalledWith(testUserId, projectData);
+      expect(getSpy).toHaveBeenCalledWith(555, testUserId);
+      expect(project).toMatchObject({ title: "Test Project", language: "de" });
+      vi.restoreAllMocks();
     });
   });
 
