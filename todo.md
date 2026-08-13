@@ -99,5 +99,5 @@
 - [x] Szenen um sichere Audio-/Soundeffekt-Asset-Verknüpfung und Upload-Validierung erweitern
 - [x] Audio-Track-UI mit Vorschau, Entfernen und Statusfeedback implementieren
 - [x] Social-Format- und Audio-Erweiterung mit 38 Vitest-Tests, Build und responsive Dashboard-Prüfung verifiziert
-- [ ] Social-Format- und Audio-Stand als neuen veröffentlichten Checkpoint speichern
+- [x] Social-Format- und Audio-Stand als neuen veröffentlichten Checkpoint gespeichert (Version b7e42a3a)
 - [x] Authentifizierten Projekt-7-Flow geöffnet und Social-Format-Schnellwahl sowie Audio-Spur-UI in der Szenenkarte verifiziert
