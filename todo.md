@@ -61,6 +61,6 @@
 - [x] Reel-Upgrade als neuen veröffentlichten Checkpoint speichern
 
 ## GitHub & Vercel Push
-- [ ] Aktuellen Arbeitsstand (Video-Reel, Statusfilter, Hover-Playback) auf GitHub pushen (main und manus-permanent)
-- [ ] Vercel-Deployment per Vercel CLI oder Git-Webhook anstoßen und verifizieren
-- [ ] GitHub- und Vercel-Ergebnis dokumentieren
+- [x] Aktuellen Arbeitsstand (Video-Reel, Statusfilter, Hover-Playback) auf GitHub pushen (main und manus-permanent)
+- [x] Vercel-Deployment per Git-Push ausgelöst (Vercel überwacht den verbundenen GitHub-Branch)
+- [x] GitHub- und Vercel-Ergebnis dokumentieren
