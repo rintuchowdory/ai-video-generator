@@ -101,3 +101,8 @@
 - [x] Social-Format- und Audio-Erweiterung mit 38 Vitest-Tests, Build und responsive Dashboard-Prüfung verifiziert
 - [x] Social-Format- und Audio-Stand als neuen veröffentlichten Checkpoint gespeichert (Version b7e42a3a)
 - [x] Authentifizierten Projekt-7-Flow geöffnet und Social-Format-Schnellwahl sowie Audio-Spur-UI in der Szenenkarte verifiziert
+
+## GitHub Synchronization
+- [ ] Lokalen Git-Stand und uncommitted Änderungen für den finalen GitHub-Push prüfen
+- [ ] Änderungen committen und auf main sowie manus-permanent pushen
+- [ ] Push-Ergebnis validieren und an den Nutzer berichten
