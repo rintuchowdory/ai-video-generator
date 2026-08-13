@@ -62,11 +62,16 @@ const trpcClient = trpc.createClient({
         }
         return {};
       },
-      fetch(input, init) {
-        return globalThis.fetch(input, {
+      async fetch(input, init) {
+        const res = await globalThis.fetch(input, {
           ...(init ?? {}),
           credentials: "include",
         });
+        const contentType = res.headers.get("content-type") || "";
+        if (contentType.includes("text/html")) {
+          throw new Error("API backend endpoint returned HTML instead of JSON. Make sure the Node server process is running (not static-only hosting).");
+        }
+        return res;
       },
     }),
   ],
