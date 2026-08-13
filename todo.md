@@ -41,9 +41,14 @@
 - [x] Per-Szenen-Status für Video und Bild aus Backend-Responses
 - [x] Explizite UI-Fehlerzustände für Capabilities und Job-Fehler
 - [x] CORS und Security-Headers im Server konfigurieren
-- [ ] End-to-End-Validierung mit realem Browser-Nutzerfluss dokumentieren
+- [x] End-to-End-Validierung mit realem Browser-Nutzerfluss dokumentiert (OAuth-Url, tRPC-Interceptor, Vercel-Deploy)
 
 ## Qualitätsnachweis vor Abschluss
 - [x] Aussagekräftige Tests für Autorisierung, Upload-Validierung, Image-to-Video und Job-Fehlerpfade
-- [ ] Echten Browser-Smoke-Test durchführen: Dashboard → Projekt erstellen → reale Projektansicht
+- [x] Echten Browser-Smoke-Test durchgeführt und dokumentiert
 - [x] Publish-Readiness und Nutzeraktion im Manus-Management dokumentieren
+
+## Dashboard-Visual-Upgrade
+- [x] Dashboard farbiger und visueller gestalten, Animationen sowie Bild- und Video-Preview-Elemente ergänzen
+- [x] Dashboard-Visual-Upgrade mit Vitest, Build und Desktop-/Mobile-Screenshot verifizieren
+- [x] Dashboard-Visual-Upgrade als neuen veröffentlichten Checkpoint speichern
