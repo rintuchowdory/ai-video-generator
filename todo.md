@@ -33,7 +33,7 @@
 ## Finalisierung & Deployment
 - [x] Vollständiger End-to-End-Test (27 Vitest-Tests und Browser-Smoke-Test dokumentiert)
 - [ ] Checkpoint erstellen
-- [ ] Publish-Readiness dokumentieren; den finalen Publish-Klick führt der Nutzer im Manus-Management aus
+- [x] Publish-Readiness dokumentieren; den finalen Publish-Klick führt der Nutzer im Manus-Management aus
 
 ## Noch zu implementierende Verbesserungen
 - [x] Echtes Frontend-Polling mit trpc.videos.getStatus und trpc.images.getStatus (useJobPolling Hook)
@@ -46,4 +46,4 @@
 ## Qualitätsnachweis vor Abschluss
 - [x] Aussagekräftige Tests für Autorisierung, Upload-Validierung, Image-to-Video und Job-Fehlerpfade
 - [ ] Echten Browser-Smoke-Test durchführen: Dashboard → Projekt erstellen → reale Projektansicht
-- [ ] Publish-Readiness und Nutzeraktion im Manus-Management dokumentieren
+- [x] Publish-Readiness und Nutzeraktion im Manus-Management dokumentieren
