@@ -1,6 +1,12 @@
 export type DashboardStatus = "draft" | "generating" | "completed" | "failed";
 export type ReelFilter = "all" | "completed" | "in-progress" | "failed";
 
+export const SOCIAL_FORMAT_PRESETS = [
+  { id: "reels", label: "Reels / TikTok", ratio: "9:16", detail: "Hochformat" },
+  { id: "youtube", label: "YouTube", ratio: "16:9", detail: "Querformat" },
+  { id: "feed", label: "Feed / Square", ratio: "1:1", detail: "Quadrat" },
+] as const;
+
 export function isSubmitShortcut(event: { key: string; shiftKey?: boolean }) {
   return event.key === "Enter" && !event.shiftKey;
 }

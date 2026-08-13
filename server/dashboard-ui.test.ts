@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { filterReelJobs, getGreeting, getInitials, getStatusLabel, getVideoExportName, getVideoShareText, getVideoShareUrl, isSubmitShortcut } from "../client/src/lib/dashboard";
+import { filterReelJobs, getGreeting, getInitials, getStatusLabel, getVideoExportName, getVideoShareText, getVideoShareUrl, isSubmitShortcut, SOCIAL_FORMAT_PRESETS } from "../client/src/lib/dashboard";
 
 describe("dashboard visual helpers", () => {
   it("creates compact initials for account avatars", () => {
@@ -40,5 +40,10 @@ describe("dashboard visual helpers", () => {
     expect(getVideoShareUrl(job)).toBe("https://cdn.example/video.mp4");
     expect(getVideoShareText("Café-Eröffnung", 2)).toContain("Szene 2");
     expect(getVideoExportName("Café-Eröffnung", 2)).toBe("café-eröffnung-szene-2.mp4");
+  });
+
+  it("exposes supported social-first aspect ratios", () => {
+    expect(SOCIAL_FORMAT_PRESETS.map((preset) => preset.ratio)).toEqual(["9:16", "16:9", "1:1"]);
+    expect(SOCIAL_FORMAT_PRESETS[0].label).toContain("TikTok");
   });
 });

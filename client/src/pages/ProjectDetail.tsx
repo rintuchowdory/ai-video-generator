@@ -6,13 +6,13 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, ArrowLeft, Play, AlertCircle, CheckCircle2, Clock, Upload, ImagePlus } from "lucide-react";
+import { Loader2, ArrowLeft, Play, AlertCircle, CheckCircle2, Clock, Upload, ImagePlus, Music2, Volume2, X } from "lucide-react";
 import { useLocation } from "wouter";
 import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useJobPolling } from "@/hooks/useJobPolling";
-import { isSubmitShortcut } from "@/lib/dashboard";
+import { isSubmitShortcut, SOCIAL_FORMAT_PRESETS } from "@/lib/dashboard";
 
 type CapabilityModel = {
   id: string;
@@ -27,7 +27,7 @@ type CapabilityModel = {
 export default function ProjectDetail(props: any) {
   const { user } = useAuth();
   const [, navigate] = useLocation();
-  const projectId = Number(props.projectId);
+  const projectId = Number(props.params?.projectId || props.projectId);
   const [topic, setTopic] = useState("");
   const [language, setLanguage] = useState<"de" | "en">("de");
 
@@ -54,11 +54,16 @@ export default function ProjectDetail(props: any) {
   if (projectQuery.error || !projectQuery.data) {
     return (
       <div className="min-h-screen bg-background p-6">
-        <Alert variant="destructive" className="mx-auto max-w-2xl">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Projekt nicht verfügbar</AlertTitle>
-          <AlertDescription>{projectQuery.error?.message || "Das Projekt wurde nicht gefunden."}</AlertDescription>
-        </Alert>
+        <div className="mx-auto max-w-2xl space-y-4">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Projekt nicht verfügbar (ID: {projectId})</AlertTitle>
+            <AlertDescription>{projectQuery.error?.message || "Das Projekt wurde nicht gefunden."}</AlertDescription>
+          </Alert>
+          <Button variant="outline" onClick={() => navigate("/dashboard")}>
+            <ArrowLeft className="mr-2 h-4 w-4" /> Zurück zum Dashboard
+          </Button>
+        </div>
       </div>
     );
   }
@@ -196,6 +201,7 @@ function SceneCard({
   const [imageResolution, setImageResolution] = useState("1k");
   const [imageStyle, setImageStyle] = useState(imageStyles[0] || "general");
   const [uploadedAsset, setUploadedAsset] = useState<{ assetId: number; url: string; filename: string } | null>(null);
+  const [audioTrack, setAudioTrack] = useState<{ assetId: number; url: string; filename: string } | null>(scene.audioAssetId && scene.audioUrl ? { assetId: scene.audioAssetId, url: scene.audioUrl, filename: scene.audioFilename || "Audio-Spur" } : null);
   const [videoJobId, setVideoJobId] = useState<string | undefined>(scene.videoJobId ?? undefined);
   const [imageJobId, setImageJobId] = useState<string | undefined>(scene.imageJobId ?? undefined);
   const [videoStatus, setVideoStatus] = useState(scene.videoStatus || "pending");
@@ -216,7 +222,8 @@ function SceneCard({
     setImageStatus(scene.imageStatus || "pending");
     setVideoUrl(scene.videoUrl ?? undefined);
     setImageUrl(scene.imageUrl ?? undefined);
-  }, [scene.videoJobId, scene.imageJobId, scene.videoStatus, scene.imageStatus, scene.videoUrl, scene.imageUrl]);
+    setAudioTrack(scene.audioAssetId && scene.audioUrl ? { assetId: scene.audioAssetId, url: scene.audioUrl, filename: scene.audioFilename || "Audio-Spur" } : null);
+  }, [scene.videoJobId, scene.imageJobId, scene.videoStatus, scene.imageStatus, scene.videoUrl, scene.imageUrl, scene.audioAssetId, scene.audioUrl, scene.audioFilename]);
 
   const videoModels = capabilities.filter((model) => model.type === "text-to-video");
   const imageModels = capabilities.filter((model) => model.type === "text-to-image");
@@ -225,7 +232,7 @@ function SceneCard({
   const updateSceneMutation = trpc.scenes.update.useMutation({ onSuccess: () => { toast.success("Szene aktualisiert"); setEditMode(false); onUpdate(); }, onError: (error) => toast.error(error.message || "Szene konnte nicht aktualisiert werden") });
   const generateVideoMutation = trpc.videos.generateTextToVideo.useMutation({ onSuccess: (data) => { setVideoJobId(data.jobId); setVideoStatus("processing"); setPollingError(undefined); toast.success("Video-Generierung gestartet"); onUpdate(); }, onError: (error) => { setVideoStatus("failed"); toast.error(error.message || "Video konnte nicht gestartet werden"); } });
   const generateImageMutation = trpc.images.generateTextToImage.useMutation({ onSuccess: (data) => { setImageJobId(data.jobId); setImageStatus("processing"); setPollingError(undefined); toast.success("Referenzbild-Generierung gestartet"); onUpdate(); }, onError: (error) => { setImageStatus("failed"); toast.error(error.message || "Bild konnte nicht gestartet werden"); } });
-  const uploadAssetMutation = trpc.assets.upload.useMutation({ onSuccess: (data, variables) => { setUploadedAsset({ assetId: data.assetId, url: data.url, filename: variables.filename }); toast.success("Bild sicher hochgeladen"); }, onError: (error) => toast.error(error.message || "Upload fehlgeschlagen") });
+  const uploadAssetMutation = trpc.assets.upload.useMutation({ onSuccess: (data, variables) => { if (variables.mimeType.startsWith("audio/")) { const track = { assetId: data.assetId, url: data.url, filename: variables.filename }; setAudioTrack(track); updateSceneMutation.mutate({ sceneId: scene.id, projectId, audioAssetId: track.assetId, audioUrl: track.url, audioFilename: track.filename }); toast.success("Audio-Spur sicher gespeichert"); } else { setUploadedAsset({ assetId: data.assetId, url: data.url, filename: variables.filename }); toast.success("Bild sicher hochgeladen"); } }, onError: (error) => toast.error(error.message || "Upload fehlgeschlagen") });
   const animateImageMutation = trpc.images.generateImageToVideo.useMutation({ onSuccess: (data) => { setVideoJobId(data.jobId); setVideoStatus("processing"); setPollingError(undefined); toast.success("Bildanimation gestartet"); onUpdate(); }, onError: (error) => { setVideoStatus("failed"); toast.error(error.message || "Bildanimation konnte nicht gestartet werden"); } });
 
   const onFileSelected = (file?: File) => {
@@ -239,8 +246,20 @@ function SceneCard({
     reader.readAsDataURL(file);
   };
 
-  const saveScene = () => updateSceneMutation.mutate({ sceneId: scene.id, projectId, ...formData });
+  const onAudioSelected = (file?: File) => {
+    if (!file) return;
+    const allowed = ["audio/mpeg", "audio/mp3", "audio/wav", "audio/ogg", "audio/webm", "audio/mp4", "audio/m4a"];
+    if (!allowed.includes(file.type)) { toast.error("Erlaubt sind MP3, WAV, OGG, WebM und M4A"); return; }
+    if (file.size > 8 * 1024 * 1024) { toast.error("Die Audio-Spur darf höchstens 8 MB groß sein"); return; }
+    const reader = new FileReader();
+    reader.onload = () => uploadAssetMutation.mutate({ projectId, filename: file.name, mimeType: file.type as "audio/mpeg" | "audio/mp3" | "audio/wav" | "audio/ogg" | "audio/webm" | "audio/mp4" | "audio/m4a", dataBase64: String(reader.result || "") });
+    reader.onerror = () => toast.error("Die Audio-Datei konnte nicht gelesen werden");
+    reader.readAsDataURL(file);
+  };
+
+  const saveScene = () => updateSceneMutation.mutate({ sceneId: scene.id, projectId, ...formData, audioAssetId: audioTrack?.assetId ?? null, audioUrl: audioTrack?.url ?? null, audioFilename: audioTrack?.filename ?? null });
   const generateVideo = () => generateVideoMutation.mutate({ sceneId: scene.id, projectId, prompt: formData.visualPrompt, model: formData.model, resolution: formData.resolution, aspectRatio: formData.aspectRatio, durationSeconds: formData.durationSeconds, generateAudio: formData.generateAudio });
+  const removeAudioTrack = () => { setAudioTrack(null); updateSceneMutation.mutate({ sceneId: scene.id, projectId, audioAssetId: null, audioUrl: null, audioFilename: null }); };
   const generateImage = () => generateImageMutation.mutate({ sceneId: scene.id, projectId, prompt: formData.visualPrompt, model: imageModel, resolution: imageResolution, style: imageStyle });
   const animateUploadedImage = () => {
     if (!uploadedAsset) { toast.error("Bitte laden Sie zuerst ein Referenzbild hoch"); return; }
@@ -267,10 +286,12 @@ function SceneCard({
           {pollingError && <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Job-Status konnte nicht aktualisiert werden</AlertTitle><AlertDescription>{pollingError}</AlertDescription></Alert>}
           {capabilitiesError && <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Provider-Optionen fehlen</AlertTitle><AlertDescription>{capabilitiesError}</AlertDescription></Alert>}
           <GenerationFeedback videoStatus={videoStatus} imageStatus={imageStatus} videoUrl={videoUrl} imageUrl={imageUrl} videoPending={generateVideoMutation.isPending || animateImageMutation.isPending} imagePending={generateImageMutation.isPending} />
+          <AudioTrackPanel audioTrack={audioTrack} uploadPending={uploadAssetMutation.isPending} updatePending={updateSceneMutation.isPending} onUpload={onAudioSelected} onRemove={removeAudioTrack} />
           {editMode ? (
             <>
               <div><Label>Narration</Label><Textarea value={formData.narration} onChange={(event) => setFormData({ ...formData, narration: event.target.value })} onKeyDown={(event) => { if (isSubmitShortcut(event)) { event.preventDefault(); saveScene(); } }} /></div>
               <div><Label>Visueller Prompt</Label><Textarea value={formData.visualPrompt} onChange={(event) => setFormData({ ...formData, visualPrompt: event.target.value })} onKeyDown={(event) => { if (isSubmitShortcut(event)) { event.preventDefault(); saveScene(); } }} /></div>
+              <div className="space-y-2"><Label>Social-Media-Format</Label><div className="grid gap-2 sm:grid-cols-3">{SOCIAL_FORMAT_PRESETS.map((preset) => <button key={preset.id} type="button" onClick={() => setFormData({ ...formData, aspectRatio: preset.ratio })} className={`rounded-lg border px-3 py-2 text-left transition-colors ${formData.aspectRatio === preset.ratio ? "border-primary bg-primary/10 text-foreground" : "border-border bg-muted/20 text-muted-foreground hover:bg-muted/50"}`}><span className="block text-sm font-medium">{preset.label}</span><span className="mt-1 block text-xs">{preset.ratio} · {preset.detail}</span></button>)}</div><p className="text-xs text-muted-foreground">Das gewählte Format wird an Magic Hour für die Videogenerierung weitergegeben.</p></div>
               <div className="grid gap-4 md:grid-cols-2">
                 <div><Label>Video-Modell</Label><Select value={formData.model} onValueChange={(value) => setFormData({ ...formData, model: value })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{videoModels.map((model) => <SelectItem key={model.id} value={model.id}>{model.name}</SelectItem>)}</SelectContent></Select></div>
                 <div><Label>Auflösung</Label><Select value={formData.resolution} onValueChange={(value) => setFormData({ ...formData, resolution: value })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{(selectedVideoModel?.resolutions || [formData.resolution]).map((resolution) => <SelectItem key={resolution} value={resolution}>{resolution}</SelectItem>)}</SelectContent></Select></div>
@@ -310,6 +331,10 @@ function SceneCard({
       )}
     </Card>
   );
+}
+
+function AudioTrackPanel({ audioTrack, uploadPending, updatePending, onUpload, onRemove }: { audioTrack: { assetId: number; url: string; filename: string } | null; uploadPending: boolean; updatePending: boolean; onUpload: (file?: File) => void; onRemove: () => void }) {
+  return <div className="rounded-xl border border-border bg-muted/20 p-4"><div className="mb-3 flex items-center gap-2"><span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary"><Music2 className="h-4 w-4" /></span><div><h3 className="font-semibold">Audio & Soundeffekte</h3><p className="text-xs text-muted-foreground">Lege eine passende Spur zu dieser Szene.</p></div></div>{audioTrack ? <div className="space-y-3"><div className="flex items-center gap-2 text-sm font-medium"><Volume2 className="h-4 w-4 text-primary" />{audioTrack.filename}</div><audio controls preload="metadata" src={audioTrack.url} className="w-full" /> <Button type="button" variant="outline" size="sm" onClick={onRemove} disabled={updatePending}><X className="mr-1.5 h-3.5 w-3.5" /> Spur entfernen</Button></div> : <label className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-dashed border-border px-3 py-3 text-sm transition-colors hover:bg-muted/50"><span className="flex items-center gap-2"><Upload className="h-4 w-4 text-primary" />{uploadPending ? "Audio wird hochgeladen ..." : "Audio oder Soundeffekt hinzufügen"}</span><span className="text-xs text-muted-foreground">MP3 · WAV · OGG · max. 8 MB<input className="sr-only" type="file" accept="audio/mpeg,audio/mp3,audio/wav,audio/ogg,audio/webm,audio/mp4,audio/m4a" disabled={uploadPending} onChange={(event) => onUpload(event.target.files?.[0])} /></span></label>}</div>;
 }
 
 function GenerationFeedback({ videoStatus, imageStatus, videoUrl, imageUrl, videoPending, imagePending }: { videoStatus: string; imageStatus: string; videoUrl?: string; imageUrl?: string; videoPending: boolean; imagePending: boolean }) {

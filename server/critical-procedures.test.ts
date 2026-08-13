@@ -109,6 +109,28 @@ describe("critical media procedures", () => {
     expect(db.createAsset).toHaveBeenCalledWith(expect.objectContaining({ projectId: 19, userId: 7, sizeBytes: 1 }));
   });
 
+  it("persists an authorized audio asset on a scene", async () => {
+    vi.mocked(db.getProjectById).mockResolvedValue({ id: 19, userId: 7 } as any);
+    vi.mocked(db.getSceneById).mockResolvedValue({ id: 11, projectId: 19 } as any);
+    vi.mocked(db.getAssetById).mockResolvedValue({ id: 42, projectId: 19, userId: 7, mimeType: "audio/mpeg", url: "/manus-storage/audio.mp3", filename: "audio.mp3" } as any);
+
+    const caller = callerFor(user);
+    const result = await caller.scenes.update({ sceneId: 11, projectId: 19, audioAssetId: 42, audioUrl: "/tampered-url", audioFilename: "tampered.mp3" });
+
+    expect(result).toEqual({ success: true });
+    expect(db.updateScene).toHaveBeenCalledWith(11, expect.objectContaining({ audioAssetId: 42, audioUrl: "/manus-storage/audio.mp3", audioFilename: "audio.mp3" }));
+  });
+
+  it("rejects non-audio assets for scene audio tracks", async () => {
+    vi.mocked(db.getProjectById).mockResolvedValue({ id: 19, userId: 7 } as any);
+    vi.mocked(db.getSceneById).mockResolvedValue({ id: 11, projectId: 19 } as any);
+    vi.mocked(db.getAssetById).mockResolvedValue({ id: 42, projectId: 19, userId: 7, mimeType: "image/png", url: "/manus-storage/image.png" } as any);
+
+    const caller = callerFor(user);
+    await expect(caller.scenes.update({ sceneId: 11, projectId: 19, audioAssetId: 42 })).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(db.updateScene).not.toHaveBeenCalled();
+  });
+
   it("does not submit video generation for a project the user cannot access", async () => {
     vi.mocked(db.getProjectById).mockResolvedValue(null);
     const caller = callerFor(user);

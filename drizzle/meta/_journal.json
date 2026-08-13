@@ -15,6 +15,13 @@
       "when": 1786296024408,
       "tag": "0001_curved_bloodstorm",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1786661333811,
+      "tag": "0002_purple_namorita",
+      "breakpoints": true
     }
   ]
 }

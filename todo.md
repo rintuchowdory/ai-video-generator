@@ -93,3 +93,11 @@
 - [x] Export- und Teilen-Aktionen für fertige Videojobs im Dashboard ergänzen
 - [x] Neue Interaktionen mit Vitest (35 Tests erfolgreich), Build und Responsive-Prüfung verifiziert
 - [x] Keyboard-/Feedback-/Sharing-Upgrade als neuen veröffentlichten Checkpoint gespeichert
+
+## Social Formats & Audio Tracks
+- [x] Social-Media-Seitenverhältnisse als verständliche Schnellwahl im Szenen-Generator ergänzen
+- [x] Szenen um sichere Audio-/Soundeffekt-Asset-Verknüpfung und Upload-Validierung erweitern
+- [x] Audio-Track-UI mit Vorschau, Entfernen und Statusfeedback implementieren
+- [x] Social-Format- und Audio-Erweiterung mit 38 Vitest-Tests, Build und responsive Dashboard-Prüfung verifiziert
+- [ ] Social-Format- und Audio-Stand als neuen veröffentlichten Checkpoint speichern
+- [x] Authentifizierten Projekt-7-Flow geöffnet und Social-Format-Schnellwahl sowie Audio-Spur-UI in der Szenenkarte verifiziert

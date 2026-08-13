@@ -42,7 +42,7 @@ export const appRouter = router({
       .input(z.object({
         projectId: z.number().int().positive(),
         filename: z.string().min(1).max(255),
-        mimeType: z.enum(["image/png", "image/jpeg", "image/webp", "image/avif"]),
+        mimeType: z.enum(["image/png", "image/jpeg", "image/webp", "image/avif", "audio/mpeg", "audio/mp3", "audio/wav", "audio/ogg", "audio/webm", "audio/mp4", "audio/m4a"]),
         dataBase64: z.string().min(1).max(12_000_000),
       }))
       .mutation(async ({ ctx, input }) => {
@@ -56,10 +56,10 @@ export const appRouter = router({
         try {
           data = Buffer.from(payload, "base64");
         } catch {
-          throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid image data" });
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Ungültige Medien-Daten" });
         }
         if (!data.length || data.length > 8 * 1024 * 1024) {
-          throw new TRPCError({ code: "BAD_REQUEST", message: "Image must be between 1 byte and 8 MB" });
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Bild oder Audio darf höchstens 8 MB groß sein" });
         }
 
         const safeName = input.filename.replace(/[^a-zA-Z0-9._-]/g, "_");
@@ -80,7 +80,7 @@ export const appRouter = router({
           });
           return { success: true, assetId: Number((result as any).insertId), ...stored };
         } catch (error: any) {
-          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error.message || "Upload failed" });
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error.message || "Medien-Upload fehlgeschlagen" });
         }
       }),
   }),
@@ -228,6 +228,9 @@ export const appRouter = router({
           resolution: z.string().optional(),
           aspectRatio: z.string().optional(),
           generateAudio: z.boolean().optional(),
+          audioAssetId: z.number().int().positive().nullable().optional(),
+          audioUrl: z.string().min(1).nullable().optional(),
+          audioFilename: z.string().max(255).nullable().optional(),
         })
       )
       .mutation(async ({ ctx, input }) => {
@@ -248,6 +251,19 @@ export const appRouter = router({
             });
           }
 
+          let audioPatch: { audioAssetId?: number | null; audioUrl?: string | null; audioFilename?: string | null } = {};
+          if (input.audioAssetId !== undefined) {
+            if (input.audioAssetId === null) {
+              audioPatch = { audioAssetId: null, audioUrl: null, audioFilename: null };
+            } else {
+              const audioAsset = await db.getAssetById(input.audioAssetId, input.projectId, ctx.user.id);
+              if (!audioAsset || !audioAsset.mimeType?.startsWith("audio/")) {
+                throw new TRPCError({ code: "NOT_FOUND", message: "Audio-Asset not found" });
+              }
+              audioPatch = { audioAssetId: audioAsset.id, audioUrl: audioAsset.url, audioFilename: audioAsset.filename || "Audio-Spur" };
+            }
+          }
+
           await db.updateScene(input.sceneId, {
             narration: input.narration,
             visualPrompt: input.visualPrompt,
@@ -256,6 +272,7 @@ export const appRouter = router({
             resolution: input.resolution,
             aspectRatio: input.aspectRatio,
             generateAudio: input.generateAudio,
+            ...audioPatch,
           });
 
           return { success: true };
