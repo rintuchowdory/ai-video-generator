@@ -64,3 +64,7 @@
 - [x] Aktuellen Arbeitsstand (Video-Reel, Statusfilter, Hover-Playback) auf GitHub pushen (main und manus-permanent)
 - [x] Vercel-Deployment per Git-Push ausgelöst (Vercel überwacht den verbundenen GitHub-Branch)
 - [x] GitHub- und Vercel-Ergebnis dokumentieren
+
+## Vercel Reel & Hover Verification
+- [x] Vercel-Deployment-Status und Commit-Synchronisation für das Video-Reel-Update geprüft
+- [x] tRPC-Reel-Prozedur und Hover-Vorschau in der Live-Umgebung validiert
