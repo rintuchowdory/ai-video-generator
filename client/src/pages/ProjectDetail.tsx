@@ -12,6 +12,7 @@ import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useJobPolling } from "@/hooks/useJobPolling";
+import { isSubmitShortcut } from "@/lib/dashboard";
 
 type CapabilityModel = {
   id: string;
@@ -147,7 +148,8 @@ function StoryboardForm({
       <CardContent className="space-y-4">
         <div>
           <Label htmlFor="topic">Thema oder Kampagnenidee</Label>
-          <Textarea id="topic" rows={5} value={topic} onChange={(event) => onTopicChange(event.target.value)} placeholder="z. B. Eröffnung unseres neuen Cafés in Aachen ..." />
+          <Textarea id="topic" rows={5} value={topic} onChange={(event) => onTopicChange(event.target.value)} onKeyDown={(event) => { if (isSubmitShortcut(event)) { event.preventDefault(); onSubmit(); } }} placeholder="z. B. Eröffnung unseres neuen Cafés in Aachen ..." />
+          <p className="mt-1 text-xs text-muted-foreground">Enter absenden · Shift+Enter für einen Zeilenumbruch</p>
         </div>
         <div>
           <Label htmlFor="storyboard-language">Ausgabesprache</Label>
@@ -264,17 +266,18 @@ function SceneCard({
         <CardContent className="space-y-5">
           {pollingError && <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Job-Status konnte nicht aktualisiert werden</AlertTitle><AlertDescription>{pollingError}</AlertDescription></Alert>}
           {capabilitiesError && <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Provider-Optionen fehlen</AlertTitle><AlertDescription>{capabilitiesError}</AlertDescription></Alert>}
+          <GenerationFeedback videoStatus={videoStatus} imageStatus={imageStatus} videoUrl={videoUrl} imageUrl={imageUrl} videoPending={generateVideoMutation.isPending || animateImageMutation.isPending} imagePending={generateImageMutation.isPending} />
           {editMode ? (
             <>
-              <div><Label>Narration</Label><Textarea value={formData.narration} onChange={(event) => setFormData({ ...formData, narration: event.target.value })} /></div>
-              <div><Label>Visueller Prompt</Label><Textarea value={formData.visualPrompt} onChange={(event) => setFormData({ ...formData, visualPrompt: event.target.value })} /></div>
+              <div><Label>Narration</Label><Textarea value={formData.narration} onChange={(event) => setFormData({ ...formData, narration: event.target.value })} onKeyDown={(event) => { if (isSubmitShortcut(event)) { event.preventDefault(); saveScene(); } }} /></div>
+              <div><Label>Visueller Prompt</Label><Textarea value={formData.visualPrompt} onChange={(event) => setFormData({ ...formData, visualPrompt: event.target.value })} onKeyDown={(event) => { if (isSubmitShortcut(event)) { event.preventDefault(); saveScene(); } }} /></div>
               <div className="grid gap-4 md:grid-cols-2">
                 <div><Label>Video-Modell</Label><Select value={formData.model} onValueChange={(value) => setFormData({ ...formData, model: value })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{videoModels.map((model) => <SelectItem key={model.id} value={model.id}>{model.name}</SelectItem>)}</SelectContent></Select></div>
                 <div><Label>Auflösung</Label><Select value={formData.resolution} onValueChange={(value) => setFormData({ ...formData, resolution: value })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{(selectedVideoModel?.resolutions || [formData.resolution]).map((resolution) => <SelectItem key={resolution} value={resolution}>{resolution}</SelectItem>)}</SelectContent></Select></div>
                 <div><Label>Seitenverhältnis</Label><Select value={formData.aspectRatio} onValueChange={(value) => setFormData({ ...formData, aspectRatio: value })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{(selectedVideoModel?.aspectRatios || [formData.aspectRatio]).map((ratio) => <SelectItem key={ratio} value={ratio}>{ratio}</SelectItem>)}</SelectContent></Select></div>
-                <div><Label>Dauer (Sekunden)</Label><Input type="number" min={selectedVideoModel?.minDurationSeconds || 1} max={selectedVideoModel?.maxDurationSeconds || 30} value={formData.durationSeconds} onChange={(event) => setFormData({ ...formData, durationSeconds: Number(event.target.value) })} /></div>
+                <div><Label>Dauer (Sekunden)</Label><Input type="number" min={selectedVideoModel?.minDurationSeconds || 1} max={selectedVideoModel?.maxDurationSeconds || 30} value={formData.durationSeconds} onChange={(event) => setFormData({ ...formData, durationSeconds: Number(event.target.value) })} onKeyDown={(event) => { if (isSubmitShortcut(event)) { event.preventDefault(); saveScene(); } }} /></div>
               </div>
-              <div className="flex gap-2"><Button onClick={saveScene} disabled={updateSceneMutation.isPending}>{updateSceneMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Speichern"}</Button><Button variant="outline" onClick={() => setEditMode(false)}>Abbrechen</Button></div>
+              <div className="flex gap-2"><Button type="button" onClick={saveScene} disabled={updateSceneMutation.isPending} aria-busy={updateSceneMutation.isPending} className={updateSceneMutation.isPending ? "dashboard-action-loading" : ""}>{updateSceneMutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Speichere ...</> : <><CheckCircle2 className="mr-2 h-4 w-4" /> Speichern</>}</Button><Button type="button" variant="outline" onClick={() => setEditMode(false)}>Abbrechen</Button></div>
             </>
           ) : (
             <>
@@ -283,7 +286,7 @@ function SceneCard({
               <div className="grid gap-2 text-sm md:grid-cols-4"><span><b>Modell:</b> {scene.model}</span><span><b>Auflösung:</b> {scene.resolution}</span><span><b>Format:</b> {scene.aspectRatio}</span><span><b>Dauer:</b> {scene.durationSeconds}s</span></div>
               {videoUrl && <div><Label className="text-muted-foreground">Video</Label><video src={videoUrl} controls className="mt-2 w-full rounded-lg" /></div>}
               {imageUrl && <div><Label className="text-muted-foreground">Referenzbild</Label><img src={imageUrl} alt={`Referenz für Szene ${scene.sceneNumber}`} className="mt-2 max-h-96 w-full rounded-lg object-contain" /></div>}
-              <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => setEditMode(true)}>Bearbeiten</Button><Button onClick={generateVideo} disabled={generateVideoMutation.isPending || !capabilities.length}><Play className="mr-2 h-4 w-4" />{generateVideoMutation.isPending ? "Starte ..." : "Video generieren"}</Button></div>
+              <div className="flex flex-wrap gap-2"><Button type="button" variant="outline" onClick={() => setEditMode(true)}>Bearbeiten</Button><Button type="button" onClick={generateVideo} disabled={generateVideoMutation.isPending || !capabilities.length} aria-busy={generateVideoMutation.isPending} className={generateVideoMutation.isPending ? "dashboard-action-loading" : ""}><Play className="mr-2 h-4 w-4" />{generateVideoMutation.isPending ? "Video wird gestartet ..." : "Video generieren"}</Button></div>
 
               <div className="rounded-lg border bg-muted/20 p-4">
                 <div className="mb-3 flex items-center gap-2"><ImagePlus className="h-5 w-5 text-primary" /><h3 className="font-semibold">Bildreferenz und Animation</h3></div>
@@ -293,9 +296,9 @@ function SceneCard({
                   <div><Label>Bildstil</Label><Select value={imageStyle} onValueChange={setImageStyle}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{(imageStyles.length ? imageStyles : ["general"]).map((style) => <SelectItem key={style} value={style}>{style}</SelectItem>)}</SelectContent></Select></div>
                 </div>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <Button variant="outline" onClick={generateImage} disabled={generateImageMutation.isPending || !imageModels.length}><ImagePlus className="mr-2 h-4 w-4" />{generateImageMutation.isPending ? "Erstelle Bild ..." : "Bild aus Prompt erstellen"}</Button>
+                  <Button type="button" variant="outline" onClick={generateImage} disabled={generateImageMutation.isPending || !imageModels.length} aria-busy={generateImageMutation.isPending} className={generateImageMutation.isPending ? "dashboard-action-loading" : ""}><ImagePlus className="mr-2 h-4 w-4" />{generateImageMutation.isPending ? "Bild wird erstellt ..." : "Bild aus Prompt erstellen"}</Button>
                   <label className="inline-flex cursor-pointer items-center rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted"><Upload className="mr-2 h-4 w-4" />{uploadAssetMutation.isPending ? "Lade hoch ..." : "Bild hochladen"}<input className="sr-only" type="file" accept="image/png,image/jpeg,image/webp,image/avif" onChange={(event) => onFileSelected(event.target.files?.[0])} /></label>
-                  <Button onClick={animateUploadedImage} disabled={animateImageMutation.isPending || !uploadedAsset}><Play className="mr-2 h-4 w-4" />{animateImageMutation.isPending ? "Animiert ..." : "Hochgeladenes Bild animieren"}</Button>
+                  <Button type="button" onClick={animateUploadedImage} disabled={animateImageMutation.isPending || !uploadedAsset} aria-busy={animateImageMutation.isPending} className={animateImageMutation.isPending ? "dashboard-action-loading" : ""}><Play className="mr-2 h-4 w-4" />{animateImageMutation.isPending ? "Bild wird animiert ..." : "Hochgeladenes Bild animieren"}</Button>
                 </div>
                 {uploadedAsset && <p className="mt-3 text-sm text-muted-foreground">Referenz bereit: <span className="font-medium text-foreground">{uploadedAsset.filename}</span></p>}
                 {imageStatus === "failed" && <p className="mt-3 text-sm text-destructive">Die Bildgenerierung ist fehlgeschlagen. Bitte Einstellungen prüfen und erneut versuchen.</p>}
@@ -307,6 +310,23 @@ function SceneCard({
       )}
     </Card>
   );
+}
+
+function GenerationFeedback({ videoStatus, imageStatus, videoUrl, imageUrl, videoPending, imagePending }: { videoStatus: string; imageStatus: string; videoUrl?: string; imageUrl?: string; videoPending: boolean; imagePending: boolean }) {
+  if (videoPending || imagePending || videoStatus === "processing" || imageStatus === "processing") {
+    const label = videoPending || videoStatus === "processing" ? "Video wird vorbereitet" : "Bild wird vorbereitet";
+    return <div className="dashboard-generation-feedback dashboard-generation-feedback-processing" role="status" aria-live="polite"><Loader2 className="h-4 w-4 animate-spin" /><span>{label} — der Provider arbeitet im Hintergrund. Du kannst weiterarbeiten.</span></div>;
+  }
+
+  if (videoStatus === "completed" && videoUrl) {
+    return <div className="dashboard-generation-feedback dashboard-generation-feedback-success" role="status" aria-live="polite"><CheckCircle2 className="h-4 w-4" /><span>Video fertig — Vorschau und Export sind bereit.</span></div>;
+  }
+
+  if (imageStatus === "completed" && imageUrl) {
+    return <div className="dashboard-generation-feedback dashboard-generation-feedback-success" role="status" aria-live="polite"><CheckCircle2 className="h-4 w-4" /><span>Referenzbild fertig — du kannst es jetzt animieren.</span></div>;
+  }
+
+  return null;
 }
 
 function LoadingState({ label }: { label: string }) {

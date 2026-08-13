@@ -11,9 +11,12 @@ import {
   ArrowUpRight,
   BarChart3,
   Camera,
+  Check,
   CheckCircle2,
   ChevronRight,
   Clock3,
+  Copy,
+  Download,
   Film,
   Filter,
   Grid3X3,
@@ -24,6 +27,7 @@ import {
   Play,
   PlayCircle,
   Plus,
+  Share2,
   SlidersHorizontal,
   Sparkles,
   Video,
@@ -33,7 +37,7 @@ import {
 import { useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
-import { filterReelJobs, getGreeting, getInitials, type ReelFilter } from "@/lib/dashboard";
+import { filterReelJobs, getGreeting, getInitials, getVideoExportName, getVideoShareText, getVideoShareUrl, isSubmitShortcut, type ReelFilter } from "@/lib/dashboard";
 import { startLogin } from "@/const";
 
 const HERO_ASSET = "/manus-storage/werkbank-dashboard-hero_c481c6f3.png";
@@ -83,6 +87,11 @@ export default function Dashboard() {
       toast.error(error.message || "Fehler beim Erstellen des Projekts");
     },
   });
+
+  const submitProject = () => {
+    if (!formData.title.trim() || createProjectMutation.isPending) return;
+    createProjectMutation.mutate({ title: formData.title, description: formData.description, language: formData.language });
+  };
 
   if (authLoading) {
     return (
@@ -169,11 +178,11 @@ export default function Dashboard() {
                     <div className="space-y-4">
                       <div>
                         <Label htmlFor="title">Projekttitel</Label>
-                        <Input id="title" placeholder="z.B. Café-Eröffnung" value={formData.title} onChange={(event) => setFormData({ ...formData, title: event.target.value })} />
+                        <Input id="title" placeholder="z.B. Café-Eröffnung" value={formData.title} onChange={(event) => setFormData({ ...formData, title: event.target.value })} onKeyDown={(event) => { if (isSubmitShortcut(event)) { event.preventDefault(); submitProject(); } }} />
                       </div>
                       <div>
                         <Label htmlFor="description">Beschreibung</Label>
-                        <Textarea id="description" placeholder="Optionale Beschreibung des Projekts" value={formData.description} onChange={(event) => setFormData({ ...formData, description: event.target.value })} />
+                        <Textarea id="description" placeholder="Optionale Beschreibung des Projekts" value={formData.description} onChange={(event) => setFormData({ ...formData, description: event.target.value })} onKeyDown={(event) => { if (isSubmitShortcut(event)) { event.preventDefault(); submitProject(); } }} />
                       </div>
                       <div>
                         <Label htmlFor="language">Sprache</Label>
@@ -185,8 +194,8 @@ export default function Dashboard() {
                           </SelectContent>
                         </Select>
                       </div>
-                      <Button onClick={() => createProjectMutation.mutate({ title: formData.title, description: formData.description, language: formData.language })} disabled={!formData.title || createProjectMutation.isPending} className="w-full">
-                        {createProjectMutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Erstelle...</> : "Projekt erstellen"}
+                      <Button type="button" onClick={submitProject} disabled={!formData.title.trim() || createProjectMutation.isPending} aria-busy={createProjectMutation.isPending} className={`w-full ${createProjectMutation.isPending ? "dashboard-action-loading" : ""}`}>
+                        {createProjectMutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Projekt wird erstellt ...</> : <><Plus className="mr-2 h-4 w-4" /> Projekt erstellen</>}
                       </Button>
                     </div>
                   </DialogContent>
@@ -388,10 +397,50 @@ function HoverVideo({ src, poster, label, onError }: { src: string; poster: stri
 
 function VideoReelCard({ job, index, onOpen }: { job: ReelJob; index: number; onOpen: () => void }) {
   const [mediaError, setMediaError] = useState(false);
-  const mediaUrl = job.videoUrl || job.resultUrl;
+  const mediaUrl = getVideoShareUrl(job);
   const meta = getReelStatusMeta(job.status);
   const StatusIcon = meta.icon;
   const accentClass = ["dashboard-reel-cyan", "dashboard-reel-pink", "dashboard-reel-amber"][index % 3];
+
+  const copyShareLink = async (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    if (!mediaUrl) return;
+    const shareText = getVideoShareText(job.projectTitle, job.sceneNumber);
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: job.projectTitle, text: shareText, url: mediaUrl });
+        toast.success("Video geteilt");
+        return;
+      }
+      await navigator.clipboard.writeText(mediaUrl);
+      toast.success("Video-Link kopiert");
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      toast.error("Der Video-Link konnte nicht geteilt werden");
+    }
+  };
+
+  const downloadVideo = async (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    if (!mediaUrl) return;
+    try {
+      const response = await fetch(mediaUrl);
+      if (!response.ok) throw new Error("Download nicht verfügbar");
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = getVideoExportName(job.projectTitle, job.sceneNumber);
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(objectUrl);
+      toast.success("Video-Export gestartet");
+    } catch {
+      window.open(mediaUrl, "_blank", "noopener,noreferrer");
+      toast.info("Der Clip wurde in einem neuen Tab geöffnet");
+    }
+  };
 
   return (
     <article className={`dashboard-reel-card ${accentClass} dashboard-fade-up`} style={{ animationDelay: `${index * 60}ms` }} onClick={onOpen}>
@@ -401,7 +450,7 @@ function VideoReelCard({ job, index, onOpen }: { job: ReelJob; index: number; on
         <div className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full border border-white/15 bg-slate-950/35 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.13em] text-white/80 backdrop-blur"><Video className="h-3 w-3" /> Hover zum Abspielen</div>
         <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between gap-3"><div><p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-white/55">Szene {job.sceneNumber ?? "—"}</p><h3 className="mt-1 line-clamp-1 text-base font-semibold text-white">{job.projectTitle}</h3></div><span className="dashboard-open-button"><ArrowUpRight className="h-4 w-4" /></span></div>
       </div>
-      <div className="space-y-3 p-4"><div className="flex items-center justify-between gap-2"><span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium ${meta.className}`}><StatusIcon className={`h-3.5 w-3.5 ${job.status === "processing" ? "animate-spin" : ""}`} />{meta.label}</span><span className="text-[11px] text-slate-500">{job.type === "image-to-video" ? "Bild → Video" : "Text → Video"}</span></div>{job.status === "failed" && job.errorMessage && <p className="line-clamp-1 text-xs text-rose-200/75">{job.errorMessage}</p>}{job.status !== "failed" && <p className="text-xs text-slate-500">{job.status === "completed" ? "Bereit für die Vorschau" : "Status wird automatisch aktualisiert"}</p>}</div>
+      <div className="space-y-3 p-4"><div className="flex items-center justify-between gap-2"><span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium ${meta.className}`}><StatusIcon className={`h-3.5 w-3.5 ${job.status === "processing" ? "animate-spin" : ""}`} />{meta.label}</span><span className="text-[11px] text-slate-500">{job.type === "image-to-video" ? "Bild → Video" : "Text → Video"}</span></div>{job.status === "failed" && job.errorMessage && <p className="line-clamp-1 text-xs text-rose-200/75">{job.errorMessage}</p>}{job.status !== "failed" && <p className="text-xs text-slate-500">{job.status === "completed" ? "Bereit für die Vorschau" : "Status wird automatisch aktualisiert"}</p>}{job.status === "completed" && mediaUrl && <div className="flex flex-wrap gap-2 border-t border-white/10 pt-3"><Button type="button" size="sm" variant="outline" className="border-white/15 bg-white/[0.04] text-white hover:bg-white/10" onClick={copyShareLink} aria-label={`Link für ${job.projectTitle} kopieren`}><Share2 className="mr-1.5 h-3.5 w-3.5" /> Teilen</Button><Button type="button" size="sm" variant="outline" className="border-white/15 bg-white/[0.04] text-white hover:bg-white/10" onClick={downloadVideo} aria-label={`Video ${job.projectTitle} exportieren`}><Download className="mr-1.5 h-3.5 w-3.5" /> Exportieren</Button></div>}</div>
     </article>
   );
 }

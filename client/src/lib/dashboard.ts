@@ -1,6 +1,23 @@
 export type DashboardStatus = "draft" | "generating" | "completed" | "failed";
 export type ReelFilter = "all" | "completed" | "in-progress" | "failed";
 
+export function isSubmitShortcut(event: { key: string; shiftKey?: boolean }) {
+  return event.key === "Enter" && !event.shiftKey;
+}
+
+export function getVideoShareUrl(job: { videoUrl?: string | null; resultUrl?: string | null }) {
+  return job.videoUrl || job.resultUrl || null;
+}
+
+export function getVideoShareText(projectTitle: string, sceneNumber?: number | null) {
+  return sceneNumber ? `${projectTitle} · Szene ${sceneNumber} — erstellt mit Werkbank` : `${projectTitle} — erstellt mit Werkbank`;
+}
+
+export function getVideoExportName(projectTitle: string, sceneNumber?: number | null) {
+  const safeTitle = projectTitle.toLowerCase().replace(/[^\wäöüßéèêàáâ]+/gi, "-").replace(/^-|-$/g, "") || "werkbank-video";
+  return `${safeTitle}${sceneNumber ? `-szene-${sceneNumber}` : ""}.mp4`;
+}
+
 export function getInitials(name?: string | null) {
   if (!name) return "W";
   return name

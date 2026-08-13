@@ -86,3 +86,10 @@
 ## Vercel Redeployment & Manual Testing
 - [x] Vercel-Deployment vorbereitet / Git-Push getriggert (Vercel überwacht den verbundenen Branch)
 - [x] Live-Buttons manuell und per Chromium-CDP-Klicktest auf der Domain validiert (Login-Weiterleitung erfolgreich)
+
+## Keyboard, Feedback & Sharing Upgrade
+- [x] Enter-Shortcuts für relevante Projekt-, Storyboard- und Video-Eingabefelder ergänzen
+- [x] Ladeanimationen und klares Erfolgs-/Fehlerfeedback für Projekt- und Videoaktionen implementieren
+- [x] Export- und Teilen-Aktionen für fertige Videojobs im Dashboard ergänzen
+- [x] Neue Interaktionen mit Vitest (35 Tests erfolgreich), Build und Responsive-Prüfung verifiziert
+- [x] Keyboard-/Feedback-/Sharing-Upgrade als neuen veröffentlichten Checkpoint gespeichert
