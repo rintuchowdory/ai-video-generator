@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getGreeting, getInitials, getStatusLabel } from "../client/src/lib/dashboard";
+import { filterReelJobs, getGreeting, getInitials, getStatusLabel } from "../client/src/lib/dashboard";
 
 describe("dashboard visual helpers", () => {
   it("creates compact initials for account avatars", () => {
@@ -12,6 +12,14 @@ describe("dashboard visual helpers", () => {
     expect(getGreeting(9)).toBe("Guten Morgen");
     expect(getGreeting(14)).toBe("Guten Tag");
     expect(getGreeting(20)).toBe("Guten Abend");
+  });
+
+  it("filters video jobs by completed, in-progress, and failed status", () => {
+    const jobs = [{ status: "completed" }, { status: "processing" }, { status: "pending" }, { status: "failed" }];
+    expect(filterReelJobs(jobs, "completed")).toHaveLength(1);
+    expect(filterReelJobs(jobs, "in-progress")).toHaveLength(2);
+    expect(filterReelJobs(jobs, "failed")).toHaveLength(1);
+    expect(filterReelJobs(jobs, "all")).toHaveLength(4);
   });
 
   it("keeps project status labels human-readable", () => {

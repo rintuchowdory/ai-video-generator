@@ -52,3 +52,10 @@
 - [x] Dashboard farbiger und visueller gestalten, Animationen sowie Bild- und Video-Preview-Elemente ergänzen
 - [x] Dashboard-Visual-Upgrade mit Vitest, Build und Desktop-/Mobile-Screenshot verifizieren
 - [x] Dashboard-Visual-Upgrade als neuen veröffentlichten Checkpoint speichern
+
+## Video-Reel-Upgrade
+- [x] Geschützte Video-Job-Abfrage für das Dashboard mit completed-, in-progress- und failed-Status ergänzen
+- [x] Dedizierte Video-Reel-Sektion mit Statusfiltern und Job-Karten implementieren
+- [x] Video-Previews beim Hover stumm abspielen und beim Verlassen pausieren
+- [x] Reel-Upgrade mit Vitest, Build und Desktop-/Mobile-Screenshot verifiziert
+- [x] Reel-Upgrade als neuen veröffentlichten Checkpoint speichern

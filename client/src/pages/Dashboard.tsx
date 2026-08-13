@@ -15,24 +15,34 @@ import {
   ChevronRight,
   Clock3,
   Film,
+  Filter,
   Grid3X3,
   Image as ImageIcon,
   Layers,
   Loader2,
   Palette,
   Play,
+  PlayCircle,
   Plus,
+  SlidersHorizontal,
   Sparkles,
   Video,
   WandSparkles,
   Zap,
 } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
-import { getGreeting, getInitials } from "@/lib/dashboard";
+import { filterReelJobs, getGreeting, getInitials, type ReelFilter } from "@/lib/dashboard";
 
 const HERO_ASSET = "/manus-storage/werkbank-dashboard-hero_c481c6f3.png";
+
+const reelFilterOptions: Array<{ value: ReelFilter; label: string }> = [
+  { value: "all", label: "Alle Clips" },
+  { value: "completed", label: "Fertig" },
+  { value: "in-progress", label: "In Arbeit" },
+  { value: "failed", label: "Fehlgeschlagen" },
+];
 
 const statusConfig = {
   draft: { label: "Entwurf", className: "bg-amber-400/15 text-amber-200 border-amber-300/20", icon: Clock3 },
@@ -54,6 +64,11 @@ export default function Dashboard() {
   const { data: projects, isLoading, refetch } = trpc.projects.list.useQuery(undefined, {
     enabled: !!user,
   });
+  const { data: reelJobs, isLoading: reelLoading, isFetching: reelFetching } = trpc.jobs.videoReel.useQuery(undefined, {
+    enabled: !!user,
+    refetchInterval: 15_000,
+  });
+  const [reelFilter, setReelFilter] = useState<ReelFilter>("all");
 
   const createProjectMutation = trpc.projects.create.useMutation({
     onSuccess: (data) => {
@@ -95,6 +110,7 @@ export default function Dashboard() {
   const completedCount = allProjects.filter((project) => project.status === "completed").length;
   const activeCount = allProjects.filter((project) => project.status === "generating").length;
   const draftCount = allProjects.filter((project) => project.status === "draft").length;
+  const filteredReelJobs = filterReelJobs(reelJobs ?? [], reelFilter);
   const initials = getInitials(user.name);
 
   return (
@@ -227,6 +243,17 @@ export default function Dashboard() {
           )}
         </section>
 
+        <VideoReelSection
+          jobs={filteredReelJobs}
+          allJobs={reelJobs ?? []}
+          totalJobs={reelJobs?.length ?? 0}
+          filter={reelFilter}
+          loading={reelLoading}
+          fetching={reelFetching}
+          onFilterChange={setReelFilter}
+          onOpenProject={(projectId) => navigate(`/project/${projectId}`)}
+        />
+
         <section className="dashboard-tools-grid dashboard-fade-up" style={{ animationDelay: "300ms" }}>
           <div className="dashboard-tool-card dashboard-tool-card-blue"><div className="dashboard-tool-icon"><Sparkles className="h-5 w-5" /></div><div><p className="text-sm font-semibold text-white">Storyboard starten</p><p className="mt-1 text-xs leading-5 text-blue-100/70">Aus einer Idee wird eine Szene nach der anderen.</p></div><ArrowUpRight className="ml-auto h-4 w-4 text-blue-100/70" /></div>
           <div className="dashboard-tool-card dashboard-tool-card-pink"><div className="dashboard-tool-icon"><ImageIcon className="h-5 w-5" /></div><div><p className="text-sm font-semibold text-white">Bildwelt bauen</p><p className="mt-1 text-xs leading-5 text-pink-100/70">Referenzen, Stile und Motion in einem Flow.</p></div><ArrowUpRight className="ml-auto h-4 w-4 text-pink-100/70" /></div>
@@ -235,6 +262,146 @@ export default function Dashboard() {
       </main>
     </div>
   );
+}
+
+type ReelJob = {
+  id: number;
+  jobId: string;
+  projectId: number;
+  projectTitle: string;
+  sceneId: number | null;
+  sceneNumber: number | null;
+  type: string;
+  status: string;
+  resultUrl: string | null;
+  errorMessage: string | null;
+  videoUrl: string | null;
+  imageUrl: string | null;
+  createdAt: Date;
+  completedAt: Date | null;
+};
+
+function getReelStatusMeta(status: string) {
+  if (status === "completed") return { label: "Fertig", className: "dashboard-reel-status-completed", icon: CheckCircle2 };
+  if (status === "failed") return { label: "Fehlgeschlagen", className: "dashboard-reel-status-failed", icon: Zap };
+  if (status === "processing") return { label: "In Arbeit", className: "dashboard-reel-status-processing", icon: Loader2 };
+  return { label: "Wartend", className: "dashboard-reel-status-pending", icon: Clock3 };
+}
+
+function VideoReelSection({
+  jobs,
+  allJobs,
+  totalJobs,
+  filter,
+  loading,
+  fetching,
+  onFilterChange,
+  onOpenProject,
+}: {
+  jobs: ReelJob[];
+  allJobs: ReelJob[];
+  totalJobs: number;
+  filter: ReelFilter;
+  loading: boolean;
+  fetching: boolean;
+  onFilterChange: (filter: ReelFilter) => void;
+  onOpenProject: (projectId: number) => void;
+}) {
+  const counts = {
+    all: totalJobs,
+    completed: allJobs.filter((job) => job.status === "completed").length,
+    "in-progress": allJobs.filter((job) => job.status === "pending" || job.status === "processing").length,
+    failed: allJobs.filter((job) => job.status === "failed").length,
+  };
+
+  return (
+    <section className="dashboard-reel-section dashboard-fade-up" style={{ animationDelay: "260ms" }}>
+      <div className="dashboard-reel-header">
+        <div>
+          <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-fuchsia-300"><PlayCircle className="h-4 w-4" /> Video-Reel</div>
+          <h2 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">Deine Clips in Bewegung</h2>
+          <p className="mt-1 max-w-xl text-sm text-slate-400">Behalte jede Generierung im Blick und springe direkt in das zugehörige Projekt.</p>
+        </div>
+        <div className="flex items-center gap-2 text-xs text-slate-400">
+          {fetching && <Loader2 className="h-3.5 w-3.5 animate-spin text-cyan-300" />}
+          <span>{totalJobs} Videojobs</span>
+        </div>
+      </div>
+
+      <div className="dashboard-reel-toolbar">
+        <div className="dashboard-reel-filters" role="tablist" aria-label="Videojobs nach Status filtern">
+          <span className="mr-1 hidden items-center gap-2 text-xs text-slate-500 sm:inline-flex"><SlidersHorizontal className="h-3.5 w-3.5" /> Status</span>
+          {reelFilterOptions.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              role="tab"
+              aria-selected={filter === option.value}
+              className={`dashboard-reel-filter ${filter === option.value ? "dashboard-reel-filter-active" : ""}`}
+              onClick={() => onFilterChange(option.value)}
+            >
+              {option.label}<span className="dashboard-reel-filter-count">{counts[option.value]}</span>
+            </button>
+          ))}
+        </div>
+        <div className="hidden items-center gap-2 text-[11px] text-slate-500 sm:flex"><Filter className="h-3.5 w-3.5" /> Automatisch aktualisiert</div>
+      </div>
+
+      {loading ? (
+        <div className="dashboard-reel-grid"><ReelSkeleton /><ReelSkeleton /><ReelSkeleton /></div>
+      ) : totalJobs === 0 ? (
+        <div className="dashboard-reel-empty"><span className="dashboard-reel-empty-icon"><Video className="h-6 w-6" /></span><div><p className="font-semibold text-white">Noch keine Videojobs</p><p className="mt-1 text-sm text-slate-400">Generiere ein Video in einem Projekt — der Clip erscheint hier automatisch.</p></div></div>
+      ) : jobs.length === 0 ? (
+        <div className="dashboard-reel-empty"><span className="dashboard-reel-empty-icon"><Filter className="h-6 w-6" /></span><div><p className="font-semibold text-white">Keine Clips in diesem Filter</p><p className="mt-1 text-sm text-slate-400">Wähle einen anderen Status, um weitere Videojobs zu sehen.</p></div></div>
+      ) : (
+        <div className="dashboard-reel-grid">
+          {jobs.map((job, index) => <VideoReelCard key={job.id} job={job} index={index} onOpen={() => onOpenProject(job.projectId)} />)}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function HoverVideo({ src, poster, label, onError }: { src: string; poster: string; label: string; onError?: () => void }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const startPlayback = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.muted = true;
+    void video.play().catch(() => undefined);
+  };
+  const stopPlayback = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.pause();
+    video.currentTime = 0;
+  };
+
+  return <video ref={videoRef} className="h-full w-full object-cover" src={src} poster={poster} muted loop playsInline preload="metadata" tabIndex={0} aria-label={label} onMouseEnter={startPlayback} onMouseLeave={stopPlayback} onFocus={startPlayback} onBlur={stopPlayback} onError={onError} />;
+}
+
+function VideoReelCard({ job, index, onOpen }: { job: ReelJob; index: number; onOpen: () => void }) {
+  const [mediaError, setMediaError] = useState(false);
+  const mediaUrl = job.videoUrl || job.resultUrl;
+  const meta = getReelStatusMeta(job.status);
+  const StatusIcon = meta.icon;
+  const accentClass = ["dashboard-reel-cyan", "dashboard-reel-pink", "dashboard-reel-amber"][index % 3];
+
+  return (
+    <article className={`dashboard-reel-card ${accentClass} dashboard-fade-up`} style={{ animationDelay: `${index * 60}ms` }} onClick={onOpen}>
+      <div className="dashboard-reel-media">
+        {mediaUrl && !mediaError ? <HoverVideo src={mediaUrl} poster={job.imageUrl || HERO_ASSET} label={`Videojob ${job.projectTitle}`} onError={() => setMediaError(true)} /> : job.imageUrl && !mediaError ? <img className="h-full w-full object-cover" src={job.imageUrl} alt={`Vorschaubild für ${job.projectTitle}`} onError={() => setMediaError(true)} /> : <div className="dashboard-reel-placeholder"><div className="dashboard-reel-placeholder-glow" /><Play className="relative z-10 h-7 w-7 text-white/90" /></div>}
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/10 to-transparent" />
+        <div className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full border border-white/15 bg-slate-950/35 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.13em] text-white/80 backdrop-blur"><Video className="h-3 w-3" /> Hover zum Abspielen</div>
+        <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between gap-3"><div><p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-white/55">Szene {job.sceneNumber ?? "—"}</p><h3 className="mt-1 line-clamp-1 text-base font-semibold text-white">{job.projectTitle}</h3></div><span className="dashboard-open-button"><ArrowUpRight className="h-4 w-4" /></span></div>
+      </div>
+      <div className="space-y-3 p-4"><div className="flex items-center justify-between gap-2"><span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium ${meta.className}`}><StatusIcon className={`h-3.5 w-3.5 ${job.status === "processing" ? "animate-spin" : ""}`} />{meta.label}</span><span className="text-[11px] text-slate-500">{job.type === "image-to-video" ? "Bild → Video" : "Text → Video"}</span></div>{job.status === "failed" && job.errorMessage && <p className="line-clamp-1 text-xs text-rose-200/75">{job.errorMessage}</p>}{job.status !== "failed" && <p className="text-xs text-slate-500">{job.status === "completed" ? "Bereit für die Vorschau" : "Status wird automatisch aktualisiert"}</p>}</div>
+    </article>
+  );
+}
+
+function ReelSkeleton() {
+  return <div className="dashboard-reel-card h-[295px] animate-pulse bg-white/[0.04]"><div className="h-44 bg-white/[0.06]" /><div className="space-y-3 p-4"><div className="h-4 w-2/3 rounded bg-white/10" /><div className="h-3 w-1/2 rounded bg-white/10" /></div></div>;
 }
 
 function StatCard({ icon: Icon, label, value, detail, accent, delay }: { icon: typeof Grid3X3; label: string; value: number; detail: string; accent: "cyan" | "emerald" | "amber" | "violet"; delay: string }) {
@@ -259,7 +426,7 @@ function ProjectCard({ project, index, onOpen }: { project: any; index: number; 
     <Card className={`dashboard-project-card ${accentClasses} dashboard-fade-up`} style={{ animationDelay: `${index * 70}ms` }} onClick={onOpen}>
       <div className="dashboard-project-media">
         {scene?.videoUrl && !mediaError ? (
-          <video className="h-full w-full object-cover" src={scene.videoUrl} poster={scene.imageUrl || HERO_ASSET} muted autoPlay loop playsInline preload="metadata" onError={() => setMediaError(true)} aria-label={`Videovorschau für ${project.title}`} />
+          <HoverVideo src={scene.videoUrl} poster={scene.imageUrl || HERO_ASSET} label={`Videovorschau für ${project.title}`} onError={() => setMediaError(true)} />
         ) : scene?.imageUrl && !mediaError ? (
           <img className="h-full w-full object-cover" src={scene.imageUrl} alt={`Vorschau für ${project.title}`} onError={() => setMediaError(true)} />
         ) : (

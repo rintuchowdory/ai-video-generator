@@ -248,6 +248,35 @@ export async function getProjectJobs(projectId: number) {
     .orderBy(desc(jobs.createdAt));
 }
 
+export async function getUserVideoReel(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const rows = await db.select({
+    id: jobs.id,
+    jobId: jobs.jobId,
+    projectId: projects.id,
+    projectTitle: projects.title,
+    sceneId: scenes.id,
+    sceneNumber: scenes.sceneNumber,
+    type: jobs.type,
+    status: jobs.status,
+    resultUrl: jobs.resultUrl,
+    errorMessage: jobs.errorMessage,
+    videoUrl: scenes.videoUrl,
+    imageUrl: scenes.imageUrl,
+    createdAt: jobs.createdAt,
+    completedAt: jobs.completedAt,
+  })
+    .from(jobs)
+    .innerJoin(projects, eq(jobs.projectId, projects.id))
+    .leftJoin(scenes, eq(jobs.sceneId, scenes.id))
+    .where(eq(projects.userId, userId))
+    .orderBy(desc(jobs.createdAt));
+
+  return rows.filter((job) => job.type === "text-to-video" || job.type === "image-to-video");
+}
+
 // Asset queries
 export async function createAsset(data: {
   projectId: number;

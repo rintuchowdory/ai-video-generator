@@ -13,6 +13,7 @@ vi.mock("./db", () => ({
   updateScene: vi.fn(),
   getJobById: vi.fn(),
   updateJob: vi.fn(),
+  getUserVideoReel: vi.fn(),
 }));
 
 vi.mock("./magic_hour_client", () => ({
@@ -134,6 +135,40 @@ describe("critical media procedures", () => {
     expect(magicHourClient.submitImageToVideo).toHaveBeenCalledWith(expect.objectContaining({ imageUrl: "https://storage.example/reference.png" }));
     expect(db.createJob).toHaveBeenCalledWith(expect.objectContaining({ type: "image-to-video", sceneId: 11 }));
     expect(db.updateScene).toHaveBeenCalledWith(11, { videoJobId: "mh-image-video-1", videoStatus: "processing" });
+  });
+
+  it("rejects unauthenticated video reel access", async () => {
+    const caller = callerFor(null);
+    await expect(caller.jobs.videoReel()).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    expect(db.getUserVideoReel).not.toHaveBeenCalled();
+  });
+
+  it("returns only the authenticated user's video reel jobs", async () => {
+    vi.mocked(db.getUserVideoReel).mockResolvedValue([
+      {
+        id: 91,
+        jobId: "mh-reel-1",
+        projectId: 19,
+        projectTitle: "Cafe launch",
+        sceneId: 11,
+        sceneNumber: 1,
+        type: "text-to-video",
+        status: "completed",
+        resultUrl: "https://videos.example/reel-1.mp4",
+        errorMessage: null,
+        videoUrl: "https://videos.example/reel-1.mp4",
+        imageUrl: null,
+        createdAt: new Date(),
+        completedAt: new Date(),
+      },
+    ] as any);
+
+    const caller = callerFor(user);
+    const result = await caller.jobs.videoReel();
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ jobId: "mh-reel-1", projectId: 19, status: "completed" });
+    expect(db.getUserVideoReel).toHaveBeenCalledWith(7);
   });
 
   it("persists failed video status for an authorized job", async () => {

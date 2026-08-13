@@ -179,6 +179,20 @@ export const appRouter = router({
       }),
   }),
 
+  // Video reel feed
+  jobs: router({
+    videoReel: protectedProcedure.query(async ({ ctx }) => {
+      try {
+        return await db.getUserVideoReel(ctx.user.id);
+      } catch (error) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to fetch video reel",
+        });
+      }
+    }),
+  }),
+
   // Scene management
   scenes: router({
     list: protectedProcedure
