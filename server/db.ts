@@ -265,6 +265,12 @@ export async function getUserVideoReel(userId: number) {
     errorMessage: jobs.errorMessage,
     videoUrl: scenes.videoUrl,
     imageUrl: scenes.imageUrl,
+    aspectRatio: scenes.aspectRatio,
+    durationSeconds: scenes.durationSeconds,
+    audioUrl: scenes.audioUrl,
+    audioSyncMode: scenes.audioSyncMode,
+    audioStartSeconds: scenes.audioStartSeconds,
+    audioEndSeconds: scenes.audioEndSeconds,
     createdAt: jobs.createdAt,
     completedAt: jobs.completedAt,
   })

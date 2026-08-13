@@ -231,6 +231,11 @@ export const appRouter = router({
           audioAssetId: z.number().int().positive().nullable().optional(),
           audioUrl: z.string().min(1).nullable().optional(),
           audioFilename: z.string().max(255).nullable().optional(),
+          audioSyncMode: z.enum(["auto", "manual"]).optional(),
+          audioOffsetSeconds: z.number().min(0).max(3600).optional(),
+          audioTransitionSeconds: z.number().min(0).max(2).optional(),
+          audioStartSeconds: z.number().min(0).max(3600).optional(),
+          audioEndSeconds: z.number().min(0).max(3600).optional(),
         })
       )
       .mutation(async ({ ctx, input }) => {
@@ -272,6 +277,11 @@ export const appRouter = router({
             resolution: input.resolution,
             aspectRatio: input.aspectRatio,
             generateAudio: input.generateAudio,
+            audioSyncMode: input.audioSyncMode,
+            audioOffsetSeconds: input.audioOffsetSeconds === undefined ? undefined : input.audioOffsetSeconds.toFixed(3),
+            audioTransitionSeconds: input.audioTransitionSeconds === undefined ? undefined : input.audioTransitionSeconds.toFixed(3),
+            audioStartSeconds: input.audioStartSeconds === undefined ? undefined : input.audioStartSeconds.toFixed(3),
+            audioEndSeconds: input.audioEndSeconds === undefined ? undefined : input.audioEndSeconds.toFixed(3),
             ...audioPatch,
           });
 

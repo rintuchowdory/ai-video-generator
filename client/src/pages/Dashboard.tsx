@@ -37,7 +37,7 @@ import {
 import { useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
-import { filterReelJobs, getGreeting, getInitials, getVideoExportName, getVideoShareText, getVideoShareUrl, isSubmitShortcut, type ReelFilter } from "@/lib/dashboard";
+import { filterReelJobs, filterReelJobsByPlatform, getGreeting, getInitials, getPlatformLabel, getVideoExportName, getVideoShareText, getVideoShareUrl, isSubmitShortcut, REEL_PLATFORM_FILTERS, type ReelFilter, type ReelPlatformFilter } from "@/lib/dashboard";
 import { startLogin } from "@/const";
 
 const HERO_ASSET = "/manus-storage/werkbank-dashboard-hero_c481c6f3.png";
@@ -48,6 +48,7 @@ const reelFilterOptions: Array<{ value: ReelFilter; label: string }> = [
   { value: "in-progress", label: "In Arbeit" },
   { value: "failed", label: "Fehlgeschlagen" },
 ];
+const reelPlatformFilterOptions = REEL_PLATFORM_FILTERS;
 
 const statusConfig = {
   draft: { label: "Entwurf", className: "bg-amber-400/15 text-amber-200 border-amber-300/20", icon: Clock3 },
@@ -74,6 +75,7 @@ export default function Dashboard() {
     refetchInterval: 15_000,
   });
   const [reelFilter, setReelFilter] = useState<ReelFilter>("all");
+  const [reelPlatformFilter, setReelPlatformFilter] = useState<ReelPlatformFilter>("all");
 
   const createProjectMutation = trpc.projects.create.useMutation({
     onSuccess: (data) => {
@@ -125,7 +127,7 @@ export default function Dashboard() {
   const completedCount = allProjects.filter((project) => project.status === "completed").length;
   const activeCount = allProjects.filter((project) => project.status === "generating").length;
   const draftCount = allProjects.filter((project) => project.status === "draft").length;
-  const filteredReelJobs = filterReelJobs(reelJobs ?? [], reelFilter);
+  const filteredReelJobs = filterReelJobsByPlatform(filterReelJobs(reelJobs ?? [], reelFilter), reelPlatformFilter);
   const initials = getInitials(user.name);
 
   return (
@@ -263,9 +265,11 @@ export default function Dashboard() {
           allJobs={reelJobs ?? []}
           totalJobs={reelJobs?.length ?? 0}
           filter={reelFilter}
+          platformFilter={reelPlatformFilter}
           loading={reelLoading}
           fetching={reelFetching}
           onFilterChange={setReelFilter}
+          onPlatformFilterChange={setReelPlatformFilter}
           onOpenProject={(projectId) => navigate(`/project/${projectId}`)}
         />
 
@@ -287,6 +291,12 @@ type ReelJob = {
   sceneId: number | null;
   sceneNumber: number | null;
   type: string;
+  aspectRatio: string | null;
+  durationSeconds: number | null;
+  audioUrl: string | null;
+  audioSyncMode: "auto" | "manual" | null;
+  audioStartSeconds: string | number | null;
+  audioEndSeconds: string | number | null;
   status: string;
   resultUrl: string | null;
   errorMessage: string | null;
@@ -308,18 +318,22 @@ function VideoReelSection({
   allJobs,
   totalJobs,
   filter,
+  platformFilter,
   loading,
   fetching,
   onFilterChange,
+  onPlatformFilterChange,
   onOpenProject,
 }: {
   jobs: ReelJob[];
   allJobs: ReelJob[];
   totalJobs: number;
   filter: ReelFilter;
+  platformFilter: ReelPlatformFilter;
   loading: boolean;
   fetching: boolean;
   onFilterChange: (filter: ReelFilter) => void;
+  onPlatformFilterChange: (filter: ReelPlatformFilter) => void;
   onOpenProject: (projectId: number) => void;
 }) {
   const counts = {
@@ -357,6 +371,12 @@ function VideoReelSection({
             >
               {option.label}<span className="dashboard-reel-filter-count">{counts[option.value]}</span>
             </button>
+          ))}
+        </div>
+        <div className="dashboard-reel-filters mt-2" role="tablist" aria-label="Videojobs nach Plattformformat filtern">
+          <span className="mr-1 hidden items-center gap-2 text-xs text-slate-500 sm:inline-flex"><Layers className="h-3.5 w-3.5" /> Format</span>
+          {reelPlatformFilterOptions.map((option) => (
+            <button key={option.value} type="button" role="tab" aria-selected={platformFilter === option.value} className={`dashboard-reel-filter ${platformFilter === option.value ? "dashboard-reel-filter-active dashboard-reel-filter-platform" : ""}`} onClick={() => onPlatformFilterChange(option.value)}>{option.label}</button>
           ))}
         </div>
         <div className="hidden items-center gap-2 text-[11px] text-slate-500 sm:flex"><Filter className="h-3.5 w-3.5" /> Automatisch aktualisiert</div>
@@ -450,7 +470,7 @@ function VideoReelCard({ job, index, onOpen }: { job: ReelJob; index: number; on
         <div className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full border border-white/15 bg-slate-950/35 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.13em] text-white/80 backdrop-blur"><Video className="h-3 w-3" /> Hover zum Abspielen</div>
         <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between gap-3"><div><p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-white/55">Szene {job.sceneNumber ?? "—"}</p><h3 className="mt-1 line-clamp-1 text-base font-semibold text-white">{job.projectTitle}</h3></div><span className="dashboard-open-button"><ArrowUpRight className="h-4 w-4" /></span></div>
       </div>
-      <div className="space-y-3 p-4"><div className="flex items-center justify-between gap-2"><span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium ${meta.className}`}><StatusIcon className={`h-3.5 w-3.5 ${job.status === "processing" ? "animate-spin" : ""}`} />{meta.label}</span><span className="text-[11px] text-slate-500">{job.type === "image-to-video" ? "Bild → Video" : "Text → Video"}</span></div>{job.status === "failed" && job.errorMessage && <p className="line-clamp-1 text-xs text-rose-200/75">{job.errorMessage}</p>}{job.status !== "failed" && <p className="text-xs text-slate-500">{job.status === "completed" ? "Bereit für die Vorschau" : "Status wird automatisch aktualisiert"}</p>}{job.status === "completed" && mediaUrl && <div className="flex flex-wrap gap-2 border-t border-white/10 pt-3"><Button type="button" size="sm" variant="outline" className="border-white/15 bg-white/[0.04] text-white hover:bg-white/10" onClick={copyShareLink} aria-label={`Link für ${job.projectTitle} kopieren`}><Share2 className="mr-1.5 h-3.5 w-3.5" /> Teilen</Button><Button type="button" size="sm" variant="outline" className="border-white/15 bg-white/[0.04] text-white hover:bg-white/10" onClick={downloadVideo} aria-label={`Video ${job.projectTitle} exportieren`}><Download className="mr-1.5 h-3.5 w-3.5" /> Exportieren</Button></div>}</div>
+      <div className="space-y-3 p-4"><div className="flex items-center justify-between gap-2"><span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium ${meta.className}`}><StatusIcon className={`h-3.5 w-3.5 ${job.status === "processing" ? "animate-spin" : ""}`} />{meta.label}</span><span className="text-right text-[11px] text-slate-500"><span className="block">{getPlatformLabel(job.aspectRatio)}</span><span className="block text-[10px] text-slate-600">{job.aspectRatio || "16:9"} · {job.type === "image-to-video" ? "Bild → Video" : "Text → Video"}</span></span></div>{job.status === "failed" && job.errorMessage && <p className="line-clamp-1 text-xs text-rose-200/75">{job.errorMessage}</p>}{job.status !== "failed" && <p className="text-xs text-slate-500">{job.status === "completed" ? "Bereit für die Vorschau" : "Status wird automatisch aktualisiert"}</p>}{job.status === "completed" && mediaUrl && <div className="flex flex-wrap gap-2 border-t border-white/10 pt-3"><Button type="button" size="sm" variant="outline" className="border-white/15 bg-white/[0.04] text-white hover:bg-white/10" onClick={copyShareLink} aria-label={`Link für ${job.projectTitle} kopieren`}><Share2 className="mr-1.5 h-3.5 w-3.5" /> Teilen</Button><Button type="button" size="sm" variant="outline" className="border-white/15 bg-white/[0.04] text-white hover:bg-white/10" onClick={downloadVideo} aria-label={`Video ${job.projectTitle} exportieren`}><Download className="mr-1.5 h-3.5 w-3.5" /> Exportieren</Button></div>}</div>
     </article>
   );
 }

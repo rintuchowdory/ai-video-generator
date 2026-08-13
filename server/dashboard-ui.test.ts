@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { filterReelJobs, getGreeting, getInitials, getStatusLabel, getVideoExportName, getVideoShareText, getVideoShareUrl, isSubmitShortcut, SOCIAL_FORMAT_PRESETS } from "../client/src/lib/dashboard";
+import { calculateAudioSyncWindow, filterReelJobs, filterReelJobsByPlatform, formatTimelineSeconds, getGreeting, getInitials, getPlatformForAspectRatio, getStatusLabel, getVideoExportName, getVideoShareText, getVideoShareUrl, isSubmitShortcut, SOCIAL_FORMAT_PRESETS } from "../client/src/lib/dashboard";
 
 describe("dashboard visual helpers", () => {
   it("creates compact initials for account avatars", () => {
@@ -45,5 +45,24 @@ describe("dashboard visual helpers", () => {
   it("exposes supported social-first aspect ratios", () => {
     expect(SOCIAL_FORMAT_PRESETS.map((preset) => preset.ratio)).toEqual(["9:16", "16:9", "1:1"]);
     expect(SOCIAL_FORMAT_PRESETS[0].label).toContain("TikTok");
+  });
+
+  it("filters reel jobs by platform-specific aspect ratio", () => {
+    const jobs = [{ aspectRatio: "9:16" }, { aspectRatio: "16:9" }, { aspectRatio: "1:1" }, { aspectRatio: "4:5" }];
+    expect(filterReelJobsByPlatform(jobs, "reels")).toHaveLength(1);
+    expect(filterReelJobsByPlatform(jobs, "youtube")).toHaveLength(1);
+    expect(filterReelJobsByPlatform(jobs, "feed")).toHaveLength(2);
+    expect(filterReelJobsByPlatform(jobs, "all")).toHaveLength(4);
+    expect(getPlatformForAspectRatio("9:16")).toBe("reels");
+  });
+
+  it("calculates deterministic audio windows across scene transitions", () => {
+    const window = calculateAudioSyncWindow(1, [3, 5, 2], 0, 0.25);
+    expect(window.sceneStartSeconds).toBe(3);
+    expect(window.sceneEndSeconds).toBe(8);
+    expect(window.startSeconds).toBe(2.75);
+    expect(window.endSeconds).toBe(8.25);
+    expect(window.durationSeconds).toBe(5.5);
+    expect(formatTimelineSeconds(window.startSeconds)).toBe("00:02.8");
   });
 });
