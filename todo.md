@@ -32,7 +32,7 @@
 
 ## Finalisierung & Deployment
 - [x] Vollständiger End-to-End-Test (27 Vitest-Tests und Browser-Smoke-Test dokumentiert)
-- [ ] Checkpoint erstellen
+- [x] Checkpoint erstellen (Checkpoint 70fdcf89)
 - [x] Publish-Readiness dokumentieren; den finalen Publish-Klick führt der Nutzer im Manus-Management aus
 
 ## Noch zu implementierende Verbesserungen
