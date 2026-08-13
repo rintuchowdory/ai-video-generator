@@ -82,3 +82,7 @@
 ## Button Browser Regression
 - [x] Dashboard ohne Session geöffnet, Login-Recovery-Button sichtbar vorgefunden und per Chromium-CDP geklickt
 - [x] Klick auf OAuth-Ziel `https://manus.im/app-auth` nachgewiesen; keine neue App-PageError beim Klicktest
+
+## Vercel Redeployment & Manual Testing
+- [x] Vercel-Deployment vorbereitet / Git-Push getriggert (Vercel überwacht den verbundenen Branch)
+- [x] Live-Buttons manuell und per Chromium-CDP-Klicktest auf der Domain validiert (Login-Weiterleitung erfolgreich)
