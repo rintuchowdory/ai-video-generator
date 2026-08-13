@@ -34,6 +34,7 @@ import { useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { filterReelJobs, getGreeting, getInitials, type ReelFilter } from "@/lib/dashboard";
+import { startLogin } from "@/const";
 
 const HERO_ASSET = "/manus-storage/werkbank-dashboard-hero_c481c6f3.png";
 
@@ -101,6 +102,11 @@ export default function Dashboard() {
             <CardTitle>Authentifizierung erforderlich</CardTitle>
             <CardDescription className="text-slate-300">Bitte melden Sie sich an, um fortzufahren.</CardDescription>
           </CardHeader>
+          <CardContent>
+            <Button type="button" onClick={() => startLogin()} className="dashboard-primary-button w-full text-white">
+              Anmelden und Dashboard öffnen
+            </Button>
+          </CardContent>
         </Card>
       </div>
     );

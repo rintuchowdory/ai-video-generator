@@ -274,6 +274,7 @@
   .dashboard-hero-art {
     position: absolute;
     inset: 0;
+    pointer-events: none;
     background-position: center;
     background-size: cover;
     opacity: 0.46;
@@ -284,6 +285,7 @@
   .dashboard-hero-shade {
     position: absolute;
     inset: 0;
+    pointer-events: none;
     background: linear-gradient(90deg, rgba(7, 17, 35, 0.98) 0%, rgba(8, 17, 33, 0.84) 42%, rgba(8, 17, 33, 0.32) 100%);
   }
 
@@ -841,5 +843,11 @@
     .dashboard-reel-toolbar { align-items: flex-start; flex-direction: column; }
     .dashboard-reel-filters { width: 100%; }
     .dashboard-reel-filter { font-size: 0.68rem; }
+  }
+}
+
+@layer components {
+  .dashboard-hero > .relative {
+    z-index: 1;
   }
 }

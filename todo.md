@@ -72,4 +72,13 @@
 ## Button & Click Diagnostics & Fix
 - [x] Analysiere in Dashboard.tsx und Projektkarten nach ungematchten Event-Handlern oder Dialog-Trigger-Blockaden
 - [x] Behebe Event-Propagation oder interaktive Klick-Blockaden in Dialogen und Projektkarten (Pointer-Events und z-Index für Select/Dialog korrigiert)
-- [x] Verifiziere das Button-Verhalten per Test, Build und Screenshot (33 Tests erfolgreich)
+- [x] Verifiziere den Button-Fix per TypeScript, Vitest und Produktions-Build (33 Tests erfolgreich); visueller Screenshot geprüft
+
+## Button Root-Cause Follow-up
+- [x] Dekorative Hero-Layer mit pointer-events none und explizitem Inhalts-z-index absichern
+- [x] Authentifizierungs-Dead-End im direkten Dashboard-Aufruf mit Login-Recovery-Button beheben
+- [x] Nach dem Root-Cause-Fix Preview-Logs erneut geprüft; bestehende Drittanbieter-CSP-Meldungen als externen Browser-/Plattform-Lärm eingeordnet
+
+## Button Browser Regression
+- [x] Dashboard ohne Session geöffnet, Login-Recovery-Button sichtbar vorgefunden und per Chromium-CDP geklickt
+- [x] Klick auf OAuth-Ziel `https://manus.im/app-auth` nachgewiesen; keine neue App-PageError beim Klicktest
