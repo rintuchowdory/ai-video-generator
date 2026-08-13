@@ -68,3 +68,8 @@
 ## Vercel Reel & Hover Verification
 - [x] Vercel-Deployment-Status und Commit-Synchronisation für das Video-Reel-Update geprüft
 - [x] tRPC-Reel-Prozedur und Hover-Vorschau in der Live-Umgebung validiert
+
+## Button & Click Diagnostics & Fix
+- [x] Analysiere in Dashboard.tsx und Projektkarten nach ungematchten Event-Handlern oder Dialog-Trigger-Blockaden
+- [x] Behebe Event-Propagation oder interaktive Klick-Blockaden in Dialogen und Projektkarten (Pointer-Events und z-Index für Select/Dialog korrigiert)
+- [x] Verifiziere das Button-Verhalten per Test, Build und Screenshot (33 Tests erfolgreich)
