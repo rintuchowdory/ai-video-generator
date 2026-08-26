@@ -1,4 +1,4 @@
-name: Deploy static frontend to GitHub Pages
+name: Deploy frontend to GitHub Pages
 on:
   push:
     branches: [main]
@@ -19,7 +19,7 @@ jobs:
         run: npm install --global pnpm@10.4.1
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec vite build --base=/ai-video-generator/
@@ -31,5 +31,6 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    steps:
       - id: deployment
         uses: actions/deploy-pages@v4
