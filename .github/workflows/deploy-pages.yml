@@ -21,6 +21,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec vite build --base=/ai-video-generator/
+      - run: cp dist/public/index.html dist/public/404.html
       - name: Publish generated frontend into the configured Pages root
         run: |
           rm -rf assets
