@@ -11,11 +11,19 @@
   },
   "rewrites": [
     {
+      "source": "/probe-a/:path*",
+      "destination": "/api/probe"
+    },
+    {
+      "source": "/probe-b/:path*",
+      "destination": "/api/probe/:path*"
+    },
+    {
       "source": "/manus-storage/:path*",
       "destination": "/api/manus-storage/:path*"
     },
     {
-      "source": "/((?!api/|manus-storage/).*)",
+      "source": "/((?!api/|manus-storage/|probe-a/|probe-b/).*)",
       "destination": "/"
     }
   ]
