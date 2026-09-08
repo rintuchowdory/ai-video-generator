@@ -1,0 +1,38 @@
+name: Database Migration
+
+on:
+  workflow_dispatch:
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Apply migrations
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: pnpm db:push
+
+      - name: Verify schema
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          node -e "
+            const { Client } = require('pg');
+            const c = new Client({ connectionString: process.env.SUPABASE_DB_URL, ssl: { rejectUnauthorized: false } });
+            c.connect()
+              .then(() => c.query(\"select table_name from information_schema.tables where table_schema='public' order by table_name\"))
+              .then(r => { console.log('TABLES:', r.rows.map(x => x.table_name).join(', ')); process.exit(0); })
+              .catch(e => { console.error('VERIFY_FAILED:', e.message); process.exit(1); });
+          "
