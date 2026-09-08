@@ -5,25 +5,29 @@
   "framework": "vite",
   "outputDirectory": "dist/public",
   "functions": {
-    "api/[...path].ts": {
+    "api/index.ts": {
       "maxDuration": 30
     }
   },
   "rewrites": [
     {
+      "source": "/api/(.*)",
+      "destination": "/api"
+    },
+    {
       "source": "/probe-a/:path*",
       "destination": "/api/probe"
     },
     {
-      "source": "/probe-b/:path*",
-      "destination": "/api/probe/:path*"
+      "source": "/probe-c/(.*)",
+      "destination": "/api/probe"
     },
     {
       "source": "/manus-storage/:path*",
       "destination": "/api/manus-storage/:path*"
     },
     {
-      "source": "/((?!api/|manus-storage/|probe-a/|probe-b/).*)",
+      "source": "/((?!api/|manus-storage/|probe-a/|probe-c/).*)",
       "destination": "/"
     }
   ]
