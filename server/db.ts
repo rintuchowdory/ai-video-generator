@@ -18,7 +18,16 @@ export async function getDb() {
       if (databaseUrl.startsWith("sb_")) {
         throw new Error("SUPABASE_DB_URL/DATABASE_URL must be a PostgreSQL connection URI, not a Supabase API secret key");
       }
-      _pool = new Pool({ connectionString: databaseUrl, max: 5, idleTimeoutMillis: 30_000, connectionTimeoutMillis: 10_000, ssl: { rejectUnauthorized: false } });
+      // Local development databases (localhost/127.0.0.1) usually run without
+      // TLS; hosted databases such as the Supabase pooler require SSL.
+      let poolUrl: URL;
+      try {
+        poolUrl = new URL(databaseUrl);
+      } catch {
+        poolUrl = new URL("postgresql://localhost/postgres");
+      }
+      const isLocal = ["localhost", "127.0.0.1", "::1"].includes(poolUrl.hostname);
+      _pool = new Pool({ connectionString: databaseUrl, max: 5, idleTimeoutMillis: 30_000, connectionTimeoutMillis: 10_000, ssl: isLocal ? undefined : { rejectUnauthorized: false } });
       _db = drizzle(_pool);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);

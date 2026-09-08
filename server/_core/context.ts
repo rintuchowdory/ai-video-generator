@@ -46,7 +46,21 @@ export async function createContext(
   opts: CreateExpressContextOptions
 ): Promise<TrpcContext> {
   const guestId = getOrIssueGuestId(opts);
-  const user = await getOrCreateGuestUser(guestId);
+
+  // The guest user record only exists with a working database. When the
+  // database is unreachable, degrade gracefully instead of failing every
+  // request: public procedures (provider capabilities, system health) keep
+  // working, while workspace procedures reject with a clean UNAUTHORIZED
+  // error via the requireWorkspace middleware.
+  let user: User | null = null;
+  try {
+    user = await getOrCreateGuestUser(guestId);
+  } catch (error) {
+    console.warn(
+      "[Context] Guest workspace unavailable:",
+      error instanceof Error ? error.message : error
+    );
+  }
 
   return {
     req: opts.req,

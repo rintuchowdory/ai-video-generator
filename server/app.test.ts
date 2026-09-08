@@ -73,4 +73,34 @@ describe("API HTTP transport", () => {
       { result: { data: { json: { models: [], imageStyles: [] } } } },
     ]);
   });
+
+  it("keeps public procedures working and rejects workspace procedures cleanly when the database is down", async () => {
+    vi.mocked(db.getOrCreateGuestUser).mockRejectedValue(
+      new Error("Database not available"),
+    );
+    vi.mocked(magicHourClient.getCapabilities).mockResolvedValue({
+      models: [],
+      imageStyles: [],
+    });
+    server = createServer(createApp());
+    const port = await listen(server);
+
+    // Public procedure: still served, no 500.
+    const publicResponse = await fetch(
+      `http://127.0.0.1:${port}/api/trpc/provider.capabilities?batch=1&input=%7B%220%22%3A%7B%22json%22%3Anull%7D%7D`,
+    );
+    expect(publicResponse.status).toBe(200);
+    await expect(publicResponse.json()).resolves.toEqual([
+      { result: { data: { json: { models: [], imageStyles: [] } } } },
+    ]);
+
+    // Workspace procedure: clean UNAUTHORIZED error instead of a 500 crash.
+    const workspaceResponse = await fetch(
+      `http://127.0.0.1:${port}/api/trpc/projects.list?batch=1&input=%7B%220%22%3A%7B%22json%22%3Anull%7D%7D`,
+    );
+    expect(workspaceResponse.status).toBe(401);
+    const body = (await workspaceResponse.json()) as any[];
+    expect(body[0].error.json.data.code).toBe("UNAUTHORIZED");
+  });
 });
+
