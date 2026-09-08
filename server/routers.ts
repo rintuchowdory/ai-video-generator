@@ -66,7 +66,7 @@ export const appRouter = router({
             mimeType: input.mimeType,
             sizeBytes: data.length,
           });
-          return { success: true, assetId: Number((result as any).insertId), ...stored };
+          return { success: true, assetId: result?.id ?? (result as any)?.insertId ?? 0, ...stored };
         } catch (error: any) {
           throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error.message || "Medien-Upload fehlgeschlagen" });
         }

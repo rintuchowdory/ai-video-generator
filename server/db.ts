@@ -1,14 +1,25 @@
 import { eq, and, desc } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
 import { InsertUser, User, users, projects, scenes, jobs, assets, Project, Scene, Job, Asset } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
+let _pool: Pool | null = null;
+
+function getDatabaseUrl() {
+  return process.env.SUPABASE_DB_URL ?? process.env.DATABASE_URL ?? "";
+}
 
 export async function getDb() {
-  if (!_db && process.env.DATABASE_URL) {
+  const databaseUrl = getDatabaseUrl();
+  if (!_db && databaseUrl) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      if (databaseUrl.startsWith("sb_")) {
+        throw new Error("SUPABASE_DB_URL/DATABASE_URL must be a PostgreSQL connection URI, not a Supabase API secret key");
+      }
+      _pool = new Pool({ connectionString: databaseUrl, max: 5, idleTimeoutMillis: 30_000, connectionTimeoutMillis: 10_000, ssl: { rejectUnauthorized: false } });
+      _db = drizzle(_pool);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
@@ -67,7 +78,8 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       updateSet.lastSignedIn = new Date();
     }
 
-    await db.insert(users).values(values).onDuplicateKeyUpdate({
+    await db.insert(users).values(values).onConflictDoUpdate({
+      target: users.openId,
       set: updateSet,
     });
   } catch (error) {
@@ -104,7 +116,8 @@ export async function getOrCreateGuestUser(guestId: string): Promise<User> {
     loginMethod: "guest-workspace",
     role: "user",
     lastSignedIn: now,
-  }).onDuplicateKeyUpdate({
+  }).onConflictDoUpdate({
+    target: users.openId,
     set: { lastSignedIn: now },
   });
 
@@ -324,7 +337,7 @@ export async function createAsset(data: {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const result = await db.insert(assets).values(data);
+  const [result] = await db.insert(assets).values(data).returning({ id: assets.id });
   return result;
 }
 

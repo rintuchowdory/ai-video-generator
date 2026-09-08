@@ -1,33 +1,12 @@
 {
   "version": "7",
-  "dialect": "mysql",
+  "dialect": "postgresql",
   "entries": [
     {
       "idx": 0,
-      "version": "5",
-      "when": 1786148537913,
-      "tag": "0000_previous_grim_reaper",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "5",
-      "when": 1786296024408,
-      "tag": "0001_curved_bloodstorm",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "5",
-      "when": 1786661333811,
-      "tag": "0002_purple_namorita",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "5",
-      "when": 1786662738752,
-      "tag": "0003_cuddly_legion",
+      "version": "7",
+      "when": 1788867103699,
+      "tag": "0000_mushy_lionheart",
       "breakpoints": true
     }
   ]

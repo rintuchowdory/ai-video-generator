@@ -12,11 +12,13 @@ This is not a static-only application. GitHub Pages cannot run its API, database
 
 | Required server-side variable | Purpose |
 |---|---|
-| `DATABASE_URL` | Stores anonymous workspaces, projects, scenes, jobs, and asset metadata. |
+| `SUPABASE_DB_URL` | PostgreSQL connection URI for anonymous workspaces, projects, scenes, jobs, and asset metadata. `DATABASE_URL` remains a supported fallback. |
 | `GROQ_API_KEY` | Generates storyboards. |
 | `MAGIC_HOUR_API_KEY` | Creates and checks image/video generation jobs. |
 
 Uploads and image-to-video also require the existing Manus storage configuration described in the deployment guide. No API key is exposed to the browser.
+
+The `sb_secret_...` Supabase API key is not a PostgreSQL connection URI and is not used by Drizzle. Use the Supabase **Connect** dialog to obtain the PostgreSQL pooler URI and set it as `SUPABASE_DB_URL`. Rotate any API secret that was posted publicly.
 
 ## Privacy behavior
 
