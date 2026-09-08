@@ -1,8 +1,7 @@
-# Manus Publish Readiness
+# Publish Readiness
 
-The permanent WebDev project is published and live. The latest validated code is saved in WebDev checkpoint `3a74436b`; deployment completed successfully and the live domain is `https://werkbankvid-9spu9obw.manus.space`. The production build passes, TypeScript has no errors, and the Vitest suite passes 27 tests.
+The application now starts directly in an **anonymous browser workspace**. Visitors do not need a Manus account or any other login. A random HTTP-only cookie maps a browser to its private set of projects, jobs, and uploaded assets.
 
-The deployment is confirmed at `https://werkbankvid-9spu9obw.manus.space`. Manus injects the configured server-side environment variables for `MAGIC_HOUR_API_KEY` and `GROQ_API_KEY`; these keys are not included in the repository or frontend bundle. After opening the live domain, test OAuth login, dashboard, project creation, storyboard generation, and media controls with the configured provider credits.
+The app must run on a Node-capable host because its tRPC backend stores projects and keeps provider credentials server-side. The repository includes a Vercel adapter in `api/[...path].ts`; publishing only `dist/public` (for example through GitHub Pages) is unsupported and causes `/api/trpc` to return the Vite HTML fallback instead of JSON.
 
-The current code is also available in GitHub branch `manus-permanent`:
-https://github.com/rintuchowdory/ai-video-generator/tree/manus-permanent
+Before publishing, configure `MAGIC_HOUR_API_KEY`, `GROQ_API_KEY`, and `DATABASE_URL` in the hosting provider. See [VERCEL_DEPLOY.md](./VERCEL_DEPLOY.md) for the required Vercel settings and the optional upload-storage configuration.

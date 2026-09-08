@@ -1,4 +1,3 @@
-import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -25,16 +24,15 @@ type CapabilityModel = {
 };
 
 export default function ProjectDetail(props: any) {
-  const { user } = useAuth();
   const [, navigate] = useLocation();
   const projectId = Number(props.params?.projectId || props.projectId);
   const [topic, setTopic] = useState("");
   const [language, setLanguage] = useState<"de" | "en">("de");
 
-  const projectQuery = trpc.projects.get.useQuery({ projectId }, { enabled: !!user && Number.isFinite(projectId) });
+  const projectQuery = trpc.projects.get.useQuery({ projectId }, { enabled: Number.isFinite(projectId) });
   const scenesQuery = trpc.scenes.list.useQuery(
     { projectId },
-    { enabled: !!user && !!projectQuery.data && Number.isFinite(projectId) },
+    { enabled: !!projectQuery.data && Number.isFinite(projectId) },
   );
   const capabilitiesQuery = trpc.provider.capabilities.useQuery();
 

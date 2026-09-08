@@ -65,7 +65,7 @@ describe("critical media procedures", () => {
     vi.clearAllMocks();
   });
 
-  it("rejects unauthenticated asset uploads", async () => {
+  it("rejects asset uploads when workspace initialization fails", async () => {
     const caller = callerFor(null);
     await expect(caller.assets.upload({
       projectId: 19,
@@ -159,7 +159,7 @@ describe("critical media procedures", () => {
     expect(db.updateScene).toHaveBeenCalledWith(11, { videoJobId: "mh-image-video-1", videoStatus: "processing" });
   });
 
-  it("rejects unauthenticated video reel access", async () => {
+  it("rejects video reel access when workspace initialization fails", async () => {
     const caller = callerFor(null);
     await expect(caller.jobs.videoReel()).rejects.toMatchObject({ code: "UNAUTHORIZED" });
     expect(db.getUserVideoReel).not.toHaveBeenCalled();

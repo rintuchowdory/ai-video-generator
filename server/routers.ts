@@ -1,7 +1,5 @@
-import { COOKIE_NAME } from "@shared/const";
-import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
+import { publicProcedure, router, workspaceProcedure } from "./_core/trpc";
 import { z } from "zod";
 import * as db from "./db";
 import { groqClient } from "./groq_client";
@@ -11,16 +9,6 @@ import { storagePut, storageGetSignedUrl } from "./storage";
 
 export const appRouter = router({
   system: systemRouter,
-  auth: router({
-    me: publicProcedure.query(opts => opts.ctx.user),
-    logout: publicProcedure.mutation(({ ctx }) => {
-      const cookieOptions = getSessionCookieOptions(ctx.req);
-      ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
-      return {
-        success: true,
-      } as const;
-    }),
-  }),
 
   // Provider capabilities
   provider: router({
@@ -38,7 +26,7 @@ export const appRouter = router({
 
   // Secure user assets: bytes arrive as base64 through tRPC and are stored in S3-backed storage.
   assets: router({
-    upload: protectedProcedure
+    upload: workspaceProcedure
       .input(z.object({
         projectId: z.number().int().positive(),
         filename: z.string().min(1).max(255),
@@ -87,7 +75,7 @@ export const appRouter = router({
 
   // Project management
   projects: router({
-    list: protectedProcedure.query(async ({ ctx }) => {
+    list: workspaceProcedure.query(async ({ ctx }) => {
       try {
         return await db.getUserProjects(ctx.user.id);
       } catch (error) {
@@ -98,7 +86,7 @@ export const appRouter = router({
       }
     }),
 
-    get: protectedProcedure
+    get: workspaceProcedure
       .input(z.object({ projectId: z.number() }))
       .query(async ({ ctx, input }) => {
         try {
@@ -119,7 +107,7 @@ export const appRouter = router({
         }
       }),
 
-    create: protectedProcedure
+    create: workspaceProcedure
       .input(
         z.object({
           title: z.string().min(1),
@@ -143,7 +131,7 @@ export const appRouter = router({
         }
       }),
 
-    update: protectedProcedure
+    update: workspaceProcedure
       .input(
         z.object({
           projectId: z.number(),
@@ -181,7 +169,7 @@ export const appRouter = router({
 
   // Video reel feed
   jobs: router({
-    videoReel: protectedProcedure.query(async ({ ctx }) => {
+    videoReel: workspaceProcedure.query(async ({ ctx }) => {
       try {
         return await db.getUserVideoReel(ctx.user.id);
       } catch (error) {
@@ -195,7 +183,7 @@ export const appRouter = router({
 
   // Scene management
   scenes: router({
-    list: protectedProcedure
+    list: workspaceProcedure
       .input(z.object({ projectId: z.number() }))
       .query(async ({ ctx, input }) => {
         try {
@@ -216,7 +204,7 @@ export const appRouter = router({
         }
       }),
 
-    update: protectedProcedure
+    update: workspaceProcedure
       .input(
         z.object({
           sceneId: z.number(),
@@ -298,7 +286,7 @@ export const appRouter = router({
 
   // Storyboard generation
   storyboard: router({
-    generate: protectedProcedure
+    generate: workspaceProcedure
       .input(
         z.object({
           projectId: z.number(),
@@ -365,7 +353,7 @@ export const appRouter = router({
 
   // Video generation
   videos: router({
-    generateTextToVideo: protectedProcedure
+    generateTextToVideo: workspaceProcedure
       .input(
         z.object({
           sceneId: z.number(),
@@ -435,7 +423,7 @@ export const appRouter = router({
         }
       }),
 
-    getStatus: protectedProcedure
+    getStatus: workspaceProcedure
       .input(z.object({ jobId: z.string() }))
       .query(async ({ ctx, input }) => {
         try {
@@ -499,7 +487,7 @@ export const appRouter = router({
 
   // Image generation
   images: router({
-    generateTextToImage: protectedProcedure
+    generateTextToImage: workspaceProcedure
       .input(
         z.object({
           sceneId: z.number().optional(),
@@ -557,7 +545,7 @@ export const appRouter = router({
         }
       }),
 
-    generateImageToVideo: protectedProcedure
+    generateImageToVideo: workspaceProcedure
       .input(z.object({
         sceneId: z.number().int().positive(),
         projectId: z.number().int().positive(),
@@ -603,7 +591,7 @@ export const appRouter = router({
         }
       }),
 
-    getStatus: protectedProcedure
+    getStatus: workspaceProcedure
       .input(z.object({ jobId: z.string() }))
       .query(async ({ ctx, input }) => {
         try {

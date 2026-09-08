@@ -1,29 +1,20 @@
-import { useAuth } from "@/_core/hooks/useAuth";
-import { startLogin } from "@/const";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 import { ArrowRight, Film, Zap, Lock } from "lucide-react";
 
 export default function Home() {
-  const { user, isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       {/* Navigation */}
       <nav className="border-b border-slate-700 bg-slate-900/50 backdrop-blur">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+          <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <div className="text-2xl font-bold text-white">Werkbank</div>
-          {isAuthenticated ? (
-            <Button onClick={() => navigate("/dashboard")}>
-              Dashboard
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
-          ) : (
-            <Button onClick={() => startLogin()}>
-              Anmelden
-            </Button>
-          )}
+          <Button onClick={() => navigate("/dashboard")}>
+            Studio öffnen
+            <ArrowRight className="w-4 h-4 ml-2" />
+          </Button>
         </div>
       </nav>
 
@@ -37,17 +28,10 @@ export default function Home() {
             Verwandeln Sie Ihre Marketingideen in professionelle Videoclips. 
             Von der Storyboard-Generierung bis zur fertigen Animation — alles in einer Plattform.
           </p>
-          {!isAuthenticated ? (
-            <Button size="lg" onClick={() => startLogin()} className="text-lg px-8 py-6">
-              Kostenlos starten
-              <ArrowRight className="w-5 h-5 ml-2" />
-            </Button>
-          ) : (
-            <Button size="lg" onClick={() => navigate("/dashboard")} className="text-lg px-8 py-6">
-              Zum Dashboard
-              <ArrowRight className="w-5 h-5 ml-2" />
-            </Button>
-          )}
+          <Button size="lg" onClick={() => navigate("/dashboard")} className="text-lg px-8 py-6">
+            Kostenlos starten
+            <ArrowRight className="w-5 h-5 ml-2" />
+          </Button>
         </div>
 
         {/* Features */}
@@ -70,10 +54,10 @@ export default function Home() {
 
           <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-8">
             <Lock className="w-12 h-12 text-green-400 mb-4" />
-            <h3 className="text-xl font-bold text-white mb-2">Sichere API-Verwaltung</h3>
-            <p className="text-slate-300">
-              Alle API-Schlüssel werden serverseitig verwaltet. Ihre Daten bleiben privat und geschützt.
-            </p>
+              <h3 className="text-xl font-bold text-white mb-2">Sichere API-Verwaltung</h3>
+              <p className="text-slate-300">
+              Alle API-Schlüssel bleiben serverseitig. Ihr Browser erhält einen privaten Gast-Workspace – kein Konto nötig.
+              </p>
           </div>
         </div>
 

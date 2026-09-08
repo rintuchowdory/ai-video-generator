@@ -1,7 +1,13 @@
 {
   "version": 2,
   "buildCommand": "pnpm build",
-  "installCommand": "pnpm install",
+  "installCommand": "pnpm install --frozen-lockfile",
   "framework": "vite",
-  "outputDirectory": "dist/public"
+  "outputDirectory": "dist/public",
+  "rewrites": [
+    {
+      "source": "/manus-storage/:path*",
+      "destination": "/api/manus-storage/:path*"
+    }
+  ]
 }

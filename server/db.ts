@@ -1,6 +1,6 @@
 import { eq, and, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, projects, scenes, jobs, assets, Project, Scene, Job, Asset } from "../drizzle/schema";
+import { InsertUser, User, users, projects, scenes, jobs, assets, Project, Scene, Job, Asset } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -85,6 +85,33 @@ export async function getUserByOpenId(openId: string) {
 
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
   return result.length > 0 ? result[0] : undefined;
+}
+
+/**
+ * Creates a stable database identity for an anonymous browser workspace.
+ * The browser only receives the random guest id in an HTTP-only cookie; it
+ * never receives provider credentials or a reusable application login token.
+ */
+export async function getOrCreateGuestUser(guestId: string): Promise<User> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const openId = `guest:${guestId}`;
+  const now = new Date();
+  await db.insert(users).values({
+    openId,
+    name: "Guest creator",
+    loginMethod: "guest-workspace",
+    role: "user",
+    lastSignedIn: now,
+  }).onDuplicateKeyUpdate({
+    set: { lastSignedIn: now },
+  });
+
+  const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
+  const user = result[0];
+  if (!user) throw new Error("Guest workspace could not be initialized");
+  return user;
 }
 
 // Project queries

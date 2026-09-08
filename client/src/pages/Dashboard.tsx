@@ -1,4 +1,3 @@
-import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -38,7 +37,6 @@ import { useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { filterReelJobs, filterReelJobsByPlatform, getGreeting, getInitials, getPlatformLabel, getVideoExportName, getVideoShareText, getVideoShareUrl, isSubmitShortcut, REEL_PLATFORM_FILTERS, type ReelFilter, type ReelPlatformFilter } from "@/lib/dashboard";
-import { startLogin } from "@/const";
 
 const HERO_ASSET = "/manus-storage/werkbank-dashboard-hero_c481c6f3.png";
 
@@ -58,7 +56,6 @@ const statusConfig = {
 } as const;
 
 export default function Dashboard() {
-  const { user, loading: authLoading } = useAuth();
   const [, navigate] = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -68,10 +65,9 @@ export default function Dashboard() {
   });
 
   const { data: projects, isLoading, refetch } = trpc.projects.list.useQuery(undefined, {
-    enabled: !!user,
+    retry: false,
   });
   const { data: reelJobs, isLoading: reelLoading, isFetching: reelFetching } = trpc.jobs.videoReel.useQuery(undefined, {
-    enabled: !!user,
     refetchInterval: 15_000,
   });
   const [reelFilter, setReelFilter] = useState<ReelFilter>("all");
@@ -95,40 +91,12 @@ export default function Dashboard() {
     createProjectMutation.mutate({ title: formData.title, description: formData.description, language: formData.language });
   };
 
-  if (authLoading) {
-    return (
-      <div className="dashboard-shell flex min-h-screen items-center justify-center">
-        <div className="dashboard-loader" aria-label="Dashboard wird geladen">
-          <Sparkles className="h-7 w-7 text-cyan-300" />
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="dashboard-shell flex min-h-screen items-center justify-center px-4">
-        <Card className="dashboard-card w-full max-w-md border-white/10 bg-white/[0.06] text-white">
-          <CardHeader>
-            <CardTitle>Authentifizierung erforderlich</CardTitle>
-            <CardDescription className="text-slate-300">Bitte melden Sie sich an, um fortzufahren.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button type="button" onClick={() => startLogin()} className="dashboard-primary-button w-full text-white">
-              Anmelden und Dashboard öffnen
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   const allProjects = projects ?? [];
   const completedCount = allProjects.filter((project) => project.status === "completed").length;
   const activeCount = allProjects.filter((project) => project.status === "generating").length;
   const draftCount = allProjects.filter((project) => project.status === "draft").length;
   const filteredReelJobs = filterReelJobsByPlatform(filterReelJobs(reelJobs ?? [], reelFilter), reelPlatformFilter);
-  const initials = getInitials(user.name);
+  const initials = getInitials("Guest creator");
 
   return (
     <div className="dashboard-shell min-h-screen overflow-hidden text-white">
@@ -148,7 +116,7 @@ export default function Dashboard() {
               <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-300" />
               Kreativmodus aktiv
             </div>
-            <div className="dashboard-avatar" title={user.name || "Ihr Konto"}>{initials}</div>
+            <div className="dashboard-avatar" title="Privater Gast-Workspace">{initials}</div>
           </div>
         </div>
       </header>
@@ -161,7 +129,7 @@ export default function Dashboard() {
             <div className="max-w-xl">
               <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-cyan-200/20 bg-cyan-200/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-100">
                 <WandSparkles className="h-3.5 w-3.5" />
-                {getGreeting()}, {user.name?.split(" ")[0] || "Creator"}
+                {getGreeting()}, Creator
               </div>
               <h1 className="max-w-2xl text-4xl font-semibold leading-[1.05] tracking-[-0.04em] text-white sm:text-5xl lg:text-6xl">Gute Ideen brauchen Bewegung.</h1>
               <p className="mt-5 max-w-lg text-base leading-7 text-slate-200 sm:text-lg">Verwandle Themen in Storyboards, Bilder und kurze Videos — mit einem kreativen Flow, der sich leicht anfühlt.</p>
