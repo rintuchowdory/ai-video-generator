@@ -282,7 +282,7 @@ var assets = pgTable("assets", {
 var _db = null;
 var _pool = null;
 function getDatabaseUrl() {
-  return process.env.SUPABASE_DB_URL ?? process.env.DATABASE_URL ?? "";
+  return process.env.SUPABASE_DB_URL ?? process.env.DATABASE_URL ?? process.env.POSTGRES_URL ?? "";
 }
 async function getDb() {
   const databaseUrl = getDatabaseUrl();

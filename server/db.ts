@@ -8,7 +8,15 @@ let _db: ReturnType<typeof drizzle> | null = null;
 let _pool: Pool | null = null;
 
 function getDatabaseUrl() {
-  return process.env.SUPABASE_DB_URL ?? process.env.DATABASE_URL ?? "";
+  // SUPABASE_DB_URL/DATABASE_URL: manually set URIs.
+  // POSTGRES_URL: injected by the official Supabase Vercel integration
+  // (transaction pooler). Fall back to it so the app works out of the box.
+  return (
+    process.env.SUPABASE_DB_URL ??
+    process.env.DATABASE_URL ??
+    process.env.POSTGRES_URL ??
+    ""
+  );
 }
 
 export async function getDb() {
