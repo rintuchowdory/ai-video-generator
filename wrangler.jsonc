@@ -1,0 +1,23 @@
+{
+  // Werkbank on Cloudflare Workers:
+  //  - server/_core/worker.ts exports the shared Express app (nodejs_compat)
+  //  - dist/public (Vite build) is served by the static assets binding
+  //  - /api/* requests run the worker first; everything else is static
+  "name": "werkbank",
+  "main": "server/_core/worker.ts",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "./dist/public",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+  },
+  "run_worker_first": ["/api/*"],
+  "vars": {
+    "NODE_ENV": "production",
+  },
+  // Cloudflare secrets (set with `npx wrangler secret put ... --name werkbank`):
+  //   SUPABASE_DB_URL  – Supabase transaction-pooler connection string
+  //   GROQ_API_KEY     – Groq LLM credentials
+  //   MAGIC_HOUR_API_KEY – Magic Hour video API credentials
+}

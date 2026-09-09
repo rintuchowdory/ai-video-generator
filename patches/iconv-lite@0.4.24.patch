@@ -1,0 +1,13 @@
+diff --git a/lib/index.js b/lib/index.js
+index 5391919ca2c6314bdd7c246e4d00ae1cec42c98d..cb835aa1eac01588919af918488c09b826a11220 100644
+--- a/lib/index.js
++++ b/lib/index.js
+@@ -136,7 +136,7 @@ iconv.getDecoder = function getDecoder(encoding, options) {
+ 
+ // Load extensions in Node. All of them are omitted in Browserify build via 'browser' field in package.json.
+ var nodeVer = typeof process !== 'undefined' && process.versions && process.versions.node;
+-if (nodeVer) {
++if (false) { // patched: Workers/wrangler stub out the stream/Buffer helpers below, so never load them
+ 
+     // Load streaming support in Node v0.10+
+     var nodeVerArr = nodeVer.split(".").map(Number);
