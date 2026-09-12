@@ -1,0 +1,44 @@
+name: Run SQL (admin)
+
+on:
+  workflow_dispatch:
+    inputs:
+      sql:
+        description: 'SQL to execute against SUPABASE_DB_URL'
+        required: true
+      script:
+        description: 'Optional: py|js — how to run it'
+        default: 'py'
+        required: false
+
+jobs:
+  run-sql:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Execute SQL
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          SQL: ${{ github.event.inputs.sql }}
+          MODE: ${{ github.event.inputs.script }}
+        run: |
+          if [ "$MODE" = "js" ]; then
+            sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+            psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -c "$SQL"
+          else
+            python3 -c "
+            import os, subprocess, sys
+            subprocess.run([sys.executable, '-m', 'pip', 'install', '-q', 'psycopg2-binary'], check=True)
+            import psycopg2
+            conn = psycopg2.connect(os.environ['SUPABASE_DB_URL'], sslmode='require')
+            conn.autocommit = True
+            cur = conn.cursor()
+            cur.execute(os.environ['SQL'])
+            if cur.description:
+                for row in cur.fetchall():
+                    print('ROW:', row)
+            else:
+                print('OK, rowcount:', cur.rowcount)
+            cur.close()
+            conn.close()
+            "
+          fi
